@@ -1,11 +1,17 @@
+import dotenv from 'dotenv/config';
 import express from 'express';
 import cors from 'cors';
-import dotenv from 'dotenv';
+// import dotenv from 'dotenv';
 import connectDB from './config/db.js';
 import authRoutes from './routes/authRoutes.js';
 import chatRoutes from './routes/chatRoutes.js';
 import botRoutes from './routes/botRoutes.js';
-dotenv.config();
+import documentRoutes from './routes/documentRoutes.js';
+import { initQdrantCollection } from './config/qdrant.js';
+
+
+
+initQdrantCollection(); 
 
 // Connect Database
 connectDB();
@@ -21,6 +27,7 @@ app.use(express.json());
 app.use('/api/auth', authRoutes);
 app.use('/api/chat', chatRoutes);
 app.use('/api/bots', botRoutes);
+app.use('/api/documents', documentRoutes);
 
 // Base Route
 app.get('/', (req, res) => {

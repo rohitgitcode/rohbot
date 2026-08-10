@@ -6,7 +6,7 @@ const connectDB = async () => {
       autoIndex: true, // Dev me auto-index deployment fast karta hai
     });
 
-    console.log(`🍃 MongoDB Connected: ${conn.connection.host}`);
+    console.log(` MongoDB Connected: ${conn.connection.host}`);
   } catch (error) {
     console.error(`❌ Database Connection Error: ${error.message}`);
     process.exit(1); // Production rule: DB fail hua to process terminate karo

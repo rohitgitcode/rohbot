@@ -1,0 +1,302 @@
+import { defineStore } from 'pinia'
+import { ref, computed } from 'vue'
+
+const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000'
+
+export interface Bot {
+  _id: string
+  name: string
+}
+
+export interface ChatMessage {
+  id?: string
+  role: 'user' | 'assistant'
+  content: string
+  hasContext?: boolean
+  isError?: boolean
+}
+
+export interface KBDocument {
+  _id: string
+  filename: string
+  size: number
+  chunkCount: number
+  status: string
+  createdAt: string
+}
+
+export interface ChatThread {
+  id: string
+  title: string
+  updatedAt: string
+}
+
+export const useChatStore = defineStore('chat', () => {
+  // State
+  const token = ref<string>(localStorage.getItem('rohbot_token') || '')
+  const isAuthenticated = computed(() => !!token.value)
+  
+  const bots = ref<Bot[]>([])
+  const activeBotId = ref<string>('')
+  
+  const documents = ref<KBDocument[]>([])
+
+  const chatHistory = ref<ChatThread[]>([])
+  const currentChatId = ref<string | null>(null)
+  const currentMessages = ref<ChatMessage[]>([])
+  
+  const isLoading = ref<boolean>(false)
+
+  // Actions
+  const setToken = (newToken: string) => {
+    token.value = newToken
+    if (newToken) {
+      localStorage.setItem('rohbot_token', newToken)
+    } else {
+      localStorage.removeItem('rohbot_token')
+    }
+  }
+  
+  const logout = () => {
+    setToken('')
+    chatHistory.value = []
+    currentMessages.value = []
+    currentChatId.value = null
+  }
+
+  const fetchBots = async () => {
+    if (!isAuthenticated.value) return
+    try {
+      const res = await fetch(`${API_BASE}/api/bots`, {
+        headers: { 'Authorization': `Bearer ${token.value}` }
+      })
+      if (res.ok) {
+        const payload = await res.json()
+        const fetchedBots = payload.data?.bots || []
+        if (fetchedBots.length > 0) {
+          bots.value = fetchedBots
+          if (!bots.value.find(b => b._id === activeBotId.value)) {
+            setActiveBot(bots.value[0]._id)
+          } else {
+            fetchDocuments(activeBotId.value)
+          }
+        } else {
+          bots.value = []
+          activeBotId.value = ''
+          documents.value = []
+        }
+      }
+    } catch (e) {
+      console.error('Failed to fetch bots:', e)
+    }
+  }
+
+  const createBot = async (payload: { name: string, systemPrompt: string }) => {
+    if (!isAuthenticated.value) return null
+    try {
+      const res = await fetch(`${API_BASE}/api/bots`, {
+        method: 'POST',
+        headers: { 
+          'Authorization': `Bearer ${token.value}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(payload)
+      })
+      if (res.ok) {
+        const payload = await res.json()
+        const newBot = payload.data?.bot
+        if (newBot && newBot._id) {
+          bots.value.unshift(newBot) // IMMEDIATELY push the new bot
+          setActiveBot(newBot._id)   // Sets it as activeBot and triggers fetchDocuments
+          return newBot._id
+        }
+        return null
+      }
+      return null
+    } catch (e) {
+      console.error('Failed to create bot:', e)
+      return null
+    }
+  }
+
+  const fetchDocuments = async (botId: string) => {
+    if (!isAuthenticated.value || !botId) return
+    try {
+      const res = await fetch(`${API_BASE}/api/documents?botId=${botId}`, {
+        headers: { 'Authorization': `Bearer ${token.value}` }
+      })
+      if (res.ok) {
+        const data = await res.json()
+        documents.value = data.data?.documents || []
+      }
+    } catch (e) {
+      console.error('Failed to fetch documents:', e)
+    }
+  }
+
+  const fetchChatHistory = async () => {
+    if (!isAuthenticated.value) return
+    try {
+      const res = await fetch(`${API_BASE}/api/chat`, {
+        headers: { 'Authorization': `Bearer ${token.value}` }
+      })
+      if (res.ok) {
+        const data = await res.json()
+        chatHistory.value = data.threads || []
+      }
+    } catch (e) {
+      console.error('Failed to fetch chat history:', e)
+    }
+  }
+  
+  const setActiveBot = (botId: string) => {
+    activeBotId.value = botId
+    fetchDocuments(botId)
+  }
+
+  const startNewChat = () => {
+    currentChatId.value = null
+    currentMessages.value = []
+  }
+
+  const loadChat = async (chatId: string) => {
+    if (!isAuthenticated.value) return
+    try {
+      isLoading.value = true
+      const res = await fetch(`${API_BASE}/api/chat/${chatId}`, {
+        headers: { 'Authorization': `Bearer ${token.value}` }
+      })
+      if (res.ok) {
+        const data = await res.json()
+        currentChatId.value = chatId
+        currentMessages.value = data.messages || []
+      }
+    } catch (e) {
+      console.error('Failed to load chat:', e)
+    } finally {
+      isLoading.value = false
+    }
+  }
+
+  const sendMessage = async (message: string) => {
+    if (!isAuthenticated.value || !message.trim()) return
+    
+    const userMsg: ChatMessage = { role: 'user', content: message }
+    currentMessages.value.push(userMsg)
+    
+    // Add temporary loading assistant message
+    const botMsgId = Date.now().toString()
+    currentMessages.value.push({ id: botMsgId, role: 'assistant', content: '...' })
+    isLoading.value = true
+
+    try {
+      const payload: any = {
+        message,
+        botId: activeBotId.value
+      }
+      if (currentChatId.value) {
+        payload.chatId = currentChatId.value
+      }
+
+      const res = await fetch(`${API_BASE}/api/chat/message`, {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token.value}` 
+        },
+        body: JSON.stringify(payload)
+      })
+
+      // Intercept 401
+      if (res.status === 401) {
+        logout()
+        return
+      }
+
+      if (res.ok) {
+        const data = await res.json()
+        // Update the current chat ID if this was a new chat
+        if (!currentChatId.value && data.chatId) {
+          currentChatId.value = data.chatId
+          await fetchChatHistory() // Refresh history
+        }
+        
+        // Replace loading message with actual response
+        const idx = currentMessages.value.findIndex(m => m.id === botMsgId)
+        if (idx !== -1) {
+          currentMessages.value[idx] = {
+            id: botMsgId,
+            role: 'assistant',
+            content: data.reply || data.response || 'No response',
+            hasContext: data.hasContext
+          }
+        }
+      } else {
+        throw new Error('API Error')
+      }
+    } catch (e) {
+      console.error('Failed to send message:', e)
+      const idx = currentMessages.value.findIndex(m => m.id === botMsgId)
+      if (idx !== -1) {
+        currentMessages.value[idx].content = 'No response received — try rephrasing or resending your message'
+        currentMessages.value[idx].isError = true
+      }
+    } finally {
+      isLoading.value = false
+    }
+  }
+
+  const uploadPdf = async (file: File, botId: string) => {
+    if (!isAuthenticated.value) return false
+    try {
+      const formData = new FormData()
+      formData.append('file', file)
+      formData.append('botId', botId)
+      
+      const res = await fetch(`${API_BASE}/api/documents/upload`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token.value}`
+        },
+        body: formData
+      })
+      
+      if (res.status === 401) {
+        logout()
+        return false
+      }
+      
+      const success = res.status === 201 || res.ok
+      if (success) {
+        await fetchDocuments(botId)
+      }
+      return success
+    } catch (e) {
+      console.error('Failed to upload PDF:', e)
+      return false
+    }
+  }
+
+  return {
+    token,
+    isAuthenticated,
+    bots,
+    activeBotId,
+    documents,
+    chatHistory,
+    currentChatId,
+    currentMessages,
+    isLoading,
+    setToken,
+    logout,
+    fetchBots,
+    createBot,
+    fetchDocuments,
+    fetchChatHistory,
+    setActiveBot,
+    startNewChat,
+    loadChat,
+    sendMessage,
+    uploadPdf
+  }
+})

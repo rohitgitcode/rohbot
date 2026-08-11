@@ -26,7 +26,7 @@ export interface KBDocument {
 }
 
 export interface ChatThread {
-  id: string
+  _id: string
   title: string
   updatedAt: string
 }
@@ -134,15 +134,16 @@ export const useChatStore = defineStore('chat', () => {
     }
   }
 
-  const fetchChatHistory = async () => {
+  const fetchChatHistory = async (botId?: string) => {
     if (!isAuthenticated.value) return
     try {
-      const res = await fetch(`${API_BASE}/api/chat`, {
+      const url = botId ? `${API_BASE}/api/chat?botId=${botId}` : `${API_BASE}/api/chat`
+      const res = await fetch(url, {
         headers: { 'Authorization': `Bearer ${token.value}` }
       })
       if (res.ok) {
         const data = await res.json()
-        chatHistory.value = data.threads || []
+        chatHistory.value = data.chats || []
       }
     } catch (e) {
       console.error('Failed to fetch chat history:', e)
@@ -152,6 +153,7 @@ export const useChatStore = defineStore('chat', () => {
   const setActiveBot = (botId: string) => {
     activeBotId.value = botId
     fetchDocuments(botId)
+    fetchChatHistory(botId)
   }
 
   const startNewChat = () => {
@@ -169,7 +171,7 @@ export const useChatStore = defineStore('chat', () => {
       if (res.ok) {
         const data = await res.json()
         currentChatId.value = chatId
-        currentMessages.value = data.messages || []
+        currentMessages.value = data.chat?.messages || []
       }
     } catch (e) {
       console.error('Failed to load chat:', e)
@@ -272,9 +274,74 @@ export const useChatStore = defineStore('chat', () => {
       }
       return success
     } catch (e) {
-      console.error('Failed to upload PDF:', e)
+      console.error('Failed to upload document:', e)
       return false
     }
+  }
+
+  const deleteDocument = async (documentId: string, botId: string) => {
+    if (!isAuthenticated.value) return false
+    try {
+      const res = await fetch(`${API_BASE}/api/documents/${documentId}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token.value}`
+        }
+      })
+      if (res.ok) {
+        await fetchDocuments(botId)
+        return true
+      }
+    } catch (e) {
+      console.error('Failed to delete document:', e)
+    }
+    return false
+  }
+
+  const deleteThread = async (threadId: string) => {
+    if (!isAuthenticated.value) return false
+    try {
+      const res = await fetch(`${API_BASE}/api/chat/${threadId}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token.value}`
+        }
+      })
+      if (res.ok) {
+        chatHistory.value = chatHistory.value.filter(chat => chat._id !== threadId)
+        if (currentChatId.value === threadId) {
+          startNewChat()
+        }
+        return true
+      }
+    } catch (e) {
+      console.error('Failed to delete thread:', e)
+    }
+    return false
+  }
+
+  const bulkDeleteThreads = async (threadIds: string[]) => {
+    if (!isAuthenticated.value || threadIds.length === 0) return false
+    try {
+      const res = await fetch(`${API_BASE}/api/chat/bulk-delete`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token.value}`
+        },
+        body: JSON.stringify({ threadIds })
+      })
+      if (res.ok) {
+        chatHistory.value = chatHistory.value.filter(chat => !threadIds.includes(chat._id))
+        if (currentChatId.value && threadIds.includes(currentChatId.value)) {
+          startNewChat()
+        }
+        return true
+      }
+    } catch (e) {
+      console.error('Failed to bulk delete threads:', e)
+    }
+    return false
   }
 
   return {
@@ -297,6 +364,9 @@ export const useChatStore = defineStore('chat', () => {
     startNewChat,
     loadChat,
     sendMessage,
-    uploadPdf
+    uploadPdf,
+    deleteDocument,
+    deleteThread,
+    bulkDeleteThreads
   }
 })

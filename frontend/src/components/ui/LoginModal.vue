@@ -7,14 +7,16 @@ const emit = defineEmits<{
   (e: 'success'): void
 }>()
 
+const name = ref('')
 const email = ref('')
 const password = ref('')
 const customToken = ref('')
 const isDevMode = ref(false)
+const isLoginMode = ref(true)
 const isLoading = ref(false)
 const errorMsg = ref('')
 
-const handleLogin = async () => {
+const handleAuth = async () => {
   errorMsg.value = ''
   
   if (isDevMode.value) {
@@ -28,8 +30,8 @@ const handleLogin = async () => {
     return
   }
 
-  if (!email.value || !password.value) {
-    errorMsg.value = 'Please enter email and password.'
+  if (!email.value || !password.value || (!isLoginMode.value && !name.value)) {
+    errorMsg.value = 'Please fill in all fields.'
     return
   }
 
@@ -37,10 +39,15 @@ const handleLogin = async () => {
   
   try {
     const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000'
-    const res = await fetch(`${API_BASE}/api/auth/login`, {
+    const endpoint = isLoginMode.value ? '/api/auth/login' : '/api/auth/signup'
+    const bodyPayload = isLoginMode.value 
+      ? { email: email.value, password: password.value }
+      : { name: name.value, email: email.value, password: password.value }
+
+    const res = await fetch(`${API_BASE}${endpoint}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email: email.value, password: password.value })
+      body: JSON.stringify(bodyPayload)
     })
 
     if (res.ok) {
@@ -53,10 +60,11 @@ const handleLogin = async () => {
         throw new Error('No token received')
       }
     } else {
-      throw new Error('Invalid credentials')
+      const errorData = await res.json()
+      throw new Error(errorData.message || 'Authentication failed')
     }
-  } catch (e) {
-    errorMsg.value = 'Login failed. Please check your credentials.'
+  } catch (e: any) {
+    errorMsg.value = e.message || 'Authentication failed. Please check your credentials.'
   } finally {
     isLoading.value = false
   }
@@ -77,11 +85,21 @@ const handleLogin = async () => {
           </div>
           <h1>RohBot AI</h1>
         </div>
-        <p>Sign in to access your knowledge engines</p>
+        <p>{{ isLoginMode ? 'Sign in to access your knowledge engines' : 'Create a new account' }}</p>
       </div>
 
       <div class="login-form">
         <template v-if="!isDevMode">
+          <div v-if="!isLoginMode" class="form-group">
+            <label>Full Name</label>
+            <input 
+              v-model="name" 
+              type="text" 
+              class="input-field" 
+              placeholder="John Doe"
+              @keyup.enter="handleAuth"
+            />
+          </div>
           <div class="form-group">
             <label>Email Address</label>
             <input 
@@ -89,7 +107,7 @@ const handleLogin = async () => {
               type="email" 
               class="input-field" 
               placeholder="you@example.com"
-              @keyup.enter="handleLogin"
+              @keyup.enter="handleAuth"
             />
           </div>
           <div class="form-group">
@@ -99,7 +117,7 @@ const handleLogin = async () => {
               type="password" 
               class="input-field" 
               placeholder="••••••••"
-              @keyup.enter="handleLogin"
+              @keyup.enter="handleAuth"
             />
           </div>
         </template>
@@ -112,7 +130,7 @@ const handleLogin = async () => {
               type="text" 
               class="input-field" 
               placeholder="eyJh..."
-              @keyup.enter="handleLogin"
+              @keyup.enter="handleAuth"
             />
             <span class="help-text">Authenticate directly using a developer JWT token</span>
           </div>
@@ -122,11 +140,17 @@ const handleLogin = async () => {
 
         <button 
           class="btn-primary login-btn" 
-          @click="handleLogin"
+          @click="handleAuth"
           :disabled="isLoading"
         >
-          {{ isLoading ? 'Authenticating...' : 'Enter Workspace' }}
+          {{ isLoading ? (isLoginMode ? 'Authenticating...' : 'Creating Account...') : (isLoginMode ? 'Enter Workspace' : 'Sign Up') }}
         </button>
+        
+        <div v-if="!isDevMode" class="auth-switch">
+          <button @click="isLoginMode = !isLoginMode; errorMsg = ''" class="switch-btn">
+            {{ isLoginMode ? "Don't have an account? Sign up" : "Already have an account? Log in" }}
+          </button>
+        </div>
 
         <div class="dev-toggle">
           <button @click="isDevMode = !isDevMode" class="dev-btn">
@@ -259,5 +283,24 @@ const handleLogin = async () => {
 
 .dev-btn:hover {
   color: var(--text-primary);
+}
+
+.auth-switch {
+  margin-top: var(--space-4);
+  text-align: center;
+}
+
+.switch-btn {
+  background: transparent;
+  border: none;
+  color: var(--accent-primary);
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity var(--transition-fast);
+}
+
+.switch-btn:hover {
+  opacity: 0.8;
 }
 </style>

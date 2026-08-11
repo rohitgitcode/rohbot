@@ -1,4 +1,3 @@
-import { extractText } from 'unpdf';
 import { v4 as uuidv4 } from 'uuid';
 import { qdrantClient, COLLECTION_NAME } from '../config/qdrant.js';
 import { generateEmbedding } from '../utils/embedding.js';
@@ -24,18 +23,8 @@ const chunkText = (text, chunkSize = 500, overlap = 50) => {
 };
 
 // 2. Main Document Ingestion Pipeline
-export const processAndEmbedDocument = async ({ fileBuffer, fileType, botId, documentId }) => {
-  let rawText = '';
-
-  if (fileType === 'pdf') {
-    const uint8Array = new Uint8Array(fileBuffer);
-    const { text } = await extractText(uint8Array);
-    rawText = Array.isArray(text) ? text.join('\n') : text;
-  } else if (fileType === 'txt') {
-    rawText = fileBuffer.toString('utf-8');
-  } else {
-    throw new Error('Unsupported file type');
-  }
+export const processAndEmbedDocument = async ({ extractedText, botId, documentId }) => {
+  let rawText = extractedText;
 
   // Clean raw text: sanitize broken surrogates & control characters
   rawText = rawText
@@ -134,5 +123,28 @@ export const searchRelevantContext = async (userQuery, botId, limit = 3) => {
   } catch (error) {
     console.error(`❌ [RAG Search Error] Failed to retrieve context from Qdrant:`, error.message);
     return []; // Return empty array rather than failing the whole chat flow
+  }
+};
+
+// 4. Delete Vectors for a Specific Document
+export const deleteDocumentVectors = async (documentId) => {
+  try {
+    await qdrantClient.delete(COLLECTION_NAME, {
+      wait: true,
+      filter: {
+        must: [
+          {
+            key: 'documentId',
+            match: {
+              value: documentId.toString(),
+            },
+          },
+        ],
+      },
+    });
+    console.log(`✅ [RAG Deletion] Successfully removed vectors for documentId: ${documentId.toString()}`);
+  } catch (error) {
+    console.error(`❌ [RAG Deletion Error] Failed to delete vectors from Qdrant:`, error.message);
+    throw error;
   }
 }; 

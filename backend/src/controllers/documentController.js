@@ -59,7 +59,8 @@
 
 
 import Document from '../models/Document.js';
-import { processAndEmbedDocument } from '../services/ragService.js';
+import { processAndEmbedDocument, deleteDocumentVectors } from '../services/ragService.js';
+import { parsePdfMultimodal } from '../services/pdfParserService.js';
 import mongoose from 'mongoose';
 
 export const uploadDocument = async (req, res) => {
@@ -85,9 +86,15 @@ export const uploadDocument = async (req, res) => {
     });
 
     // 3. Process Text & Push Embeddings to Qdrant
+    let extractedText = '';
+    if (document.fileType === 'pdf') {
+      extractedText = await parsePdfMultimodal(file.buffer);
+    } else {
+      extractedText = file.buffer.toString('utf-8');
+    }
+
     const { characterCount, chunkCount } = await processAndEmbedDocument({
-      fileBuffer: file.buffer,
-      fileType: document.fileType,
+      extractedText,
       botId,
       documentId: document._id,
     });
@@ -133,5 +140,34 @@ export const getDocuments = async (req, res) => {
       status: 'error',
       message: error.message,
     });
+  }
+};
+
+export const deleteDocument = async (req, res) => {
+  try {
+    const docId = req.params.id;
+    if (!docId || !mongoose.Types.ObjectId.isValid(docId)) {
+      return res.status(400).json({ status: 'fail', message: 'Valid Document ID is required' });
+    }
+
+    const document = await Document.findById(docId);
+    if (!document) {
+      return res.status(404).json({ status: 'fail', message: 'Document not found' });
+    }
+
+    // Optional: check ownership via req.user._id, but we'll assume auth middleware protects route
+    // await Document.findByIdAndDelete(docId);
+    await document.deleteOne();
+
+    // Remove from Qdrant
+    await deleteDocumentVectors(docId);
+
+    res.status(200).json({
+      status: 'success',
+      message: 'Document deleted successfully',
+    });
+  } catch (error) {
+    console.error('❌ Delete Document Error:', error);
+    res.status(500).json({ status: 'error', message: error.message });
   }
 };

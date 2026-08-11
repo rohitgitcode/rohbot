@@ -23,6 +23,15 @@ const PORT = process.env.PORT || 5000;
 app.use(cors());
 app.use(express.json());
 
+import rateLimit from 'express-rate-limit';
+
+const globalLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 100, // Limit each IP to 100 requests per windowMs
+  message: { status: 'error', message: 'Too many requests, please try again later.' }
+});
+app.use('/api/', globalLimiter);
+
 // Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/chat', chatRoutes);

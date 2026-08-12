@@ -12,34 +12,52 @@ const emit = defineEmits<{
 
 const chatStore = useChatStore()
 
+// Tabs
+const activeTab = ref<'pdf' | 'url'>('pdf')
+
+// PDF State
 const isDragging = ref(false)
 const selectedFile = ref<File | null>(null)
+
+// URL State
+const urlInput = ref('')
+
+// Common State
 const isUploading = ref(false)
 const uploadProgress = ref(0)
 const uploadSuccess = ref(false)
 const errorMsg = ref('')
 
 const handleDragOver = (e: DragEvent) => {
+  if (activeTab.value !== 'pdf') return
   e.preventDefault()
   isDragging.value = true
 }
 
 const handleDragLeave = () => {
+  if (activeTab.value !== 'pdf') return
   isDragging.value = false
 }
 
 const handleDrop = (e: DragEvent) => {
+  if (activeTab.value !== 'pdf') return
   e.preventDefault()
   isDragging.value = false
   if (e.dataTransfer?.files && e.dataTransfer.files.length > 0) {
-    validateAndSetFile(e.dataTransfer.files[0])
+    const file = e.dataTransfer.files[0]
+    if (file) {
+      validateAndSetFile(file)
+    }
   }
 }
 
 const handleFileSelect = (e: Event) => {
   const target = e.target as HTMLInputElement
   if (target.files && target.files.length > 0) {
-    validateAndSetFile(target.files[0])
+    const file = target.files[0]
+    if (file) {
+      validateAndSetFile(file)
+    }
   }
 }
 
@@ -49,8 +67,8 @@ const validateAndSetFile = (file: File) => {
     errorMsg.value = 'Only PDF files are supported.'
     return
   }
-  if (file.size > 10 * 1024 * 1024) { // 10MB limit for demo
-    errorMsg.value = 'File size must be under 10MB.'
+  if (file.size > 13 * 1024 * 1024) { // 10MB limit for demo
+    errorMsg.value = 'File size must be under 13MB.'
     return
   }
   selectedFile.value = file
@@ -66,6 +84,7 @@ const handleDelete = async (docId: string) => {
 
 const resetState = () => {
   selectedFile.value = null
+  urlInput.value = ''
   isUploading.value = false
   uploadProgress.value = 0
   uploadSuccess.value = false
@@ -77,7 +96,7 @@ const handleClose = () => {
   emit('close')
 }
 
-const handleUpload = async () => {
+const handleUploadPdf = async () => {
   if (!selectedFile.value) return
   
   const botId = chatStore.activeBotId
@@ -116,6 +135,49 @@ const handleUpload = async () => {
     isUploading.value = false
   }
 }
+
+const handleIngestUrl = async () => {
+  if (!urlInput.value || !urlInput.value.startsWith('http')) {
+    errorMsg.value = 'Please enter a valid HTTP/HTTPS URL.'
+    return
+  }
+  
+  const botId = chatStore.activeBotId
+  if (!botId) {
+    errorMsg.value = 'Please select a Workspace first.'
+    return
+  }
+  
+  isUploading.value = true
+  errorMsg.value = ''
+  uploadProgress.value = 10
+  
+  // Simulate progress bar while API is called
+  const progressInterval = setInterval(() => {
+    if (uploadProgress.value < 90) {
+      uploadProgress.value += 10
+    }
+  }, 300)
+
+  try {
+    const success = await chatStore.ingestUrl(urlInput.value, botId)
+    clearInterval(progressInterval)
+    
+    if (success) {
+      uploadProgress.value = 100
+      uploadSuccess.value = true
+      setTimeout(() => {
+        resetState()
+      }, 2000)
+    } else {
+      throw new Error('URL Ingestion failed')
+    }
+  } catch (e) {
+    clearInterval(progressInterval)
+    errorMsg.value = 'Failed to scrape and embed URL.'
+    isUploading.value = false
+  }
+}
 </script>
 
 <template>
@@ -143,14 +205,27 @@ const handleUpload = async () => {
             <div v-else class="document-list">
               <div v-for="doc in chatStore.documents" :key="doc._id" class="document-item">
                 <div class="doc-icon">
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
-                    <polyline points="14 2 14 8 20 8"></polyline>
-                  </svg>
+                  <template v-if="doc.fileType === 'url'">
+                    <span class="badge url-badge">🌐 Link</span>
+                  </template>
+                  <template v-else>
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                      <polyline points="14 2 14 8 20 8"></polyline>
+                    </svg>
+                  </template>
                 </div>
                 <div class="doc-details">
                   <span class="doc-filename">{{ doc.filename }}</span>
-                  <span class="doc-meta">{{ (doc.size || 0) > 0 ? (doc.size / 1024 / 1024).toFixed(2) + ' MB • ' : '' }}{{ doc.chunkCount }} chunks</span>
+                  <span class="doc-meta">
+                    <template v-if="doc.fileType === 'url'">
+                      <a :href="doc.sourceUrl" target="_blank" rel="noopener noreferrer" class="doc-link">Open URL</a> • 
+                    </template>
+                    <template v-else-if="(doc.size || 0) > 0">
+                      {{ (doc.size / 1024 / 1024).toFixed(2) }} MB • 
+                    </template>
+                    {{ doc.chunkCount }} chunks
+                  </span>
                 </div>
                 <button class="delete-doc-btn" @click="handleDelete(doc._id)" title="Delete Document">
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -164,68 +239,126 @@ const handleUpload = async () => {
             </div>
           </div>
 
-          <template v-if="!uploadSuccess">
-            <!-- Dropzone -->
-            <div 
-              class="dropzone"
-              :class="{ 'is-dragging': isDragging, 'has-file': selectedFile }"
-              @dragover="handleDragOver"
-              @dragleave="handleDragLeave"
-              @drop="handleDrop"
-              @click="!selectedFile && ($refs.fileInput as any).click()"
+          <!-- Tabs -->
+          <div class="tabs">
+            <button 
+              class="tab-btn" 
+              :class="{ active: activeTab === 'pdf' }" 
+              @click="activeTab = 'pdf'; errorMsg = ''"
             >
-              <input 
-                type="file" 
-                ref="fileInput" 
-                accept="application/pdf" 
-                class="hidden-input"
-                @change="handleFileSelect"
-              />
-              
-              <template v-if="!selectedFile">
-                <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="drop-icon">
-                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
-                  <polyline points="14 2 14 8 20 8"></polyline>
-                  <line x1="12" y1="18" x2="12" y2="12"></line>
-                  <line x1="9" y1="15" x2="15" y2="15"></line>
-                </svg>
-                <p>Drag & drop a PDF here</p>
-                <p class="sub-text">or click to browse</p>
-              </template>
-              
-              <template v-else>
-                <div class="file-info">
-                  <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="var(--accent-primary)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              Upload PDF
+            </button>
+            <button 
+              class="tab-btn" 
+              :class="{ active: activeTab === 'url' }" 
+              @click="activeTab = 'url'; errorMsg = ''"
+            >
+              Add Website Link
+            </button>
+          </div>
+
+          <template v-if="!uploadSuccess">
+            <!-- PDF Upload Tab -->
+            <template v-if="activeTab === 'pdf'">
+              <div 
+                class="dropzone"
+                :class="{ 'is-dragging': isDragging, 'has-file': selectedFile }"
+                @dragover="handleDragOver"
+                @dragleave="handleDragLeave"
+                @drop="handleDrop"
+                @click="!selectedFile && ($refs.fileInput as any).click()"
+              >
+                <input 
+                  type="file" 
+                  ref="fileInput" 
+                  accept="application/pdf" 
+                  class="hidden-input"
+                  @change="handleFileSelect"
+                />
+                
+                <template v-if="!selectedFile">
+                  <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="drop-icon">
                     <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
                     <polyline points="14 2 14 8 20 8"></polyline>
+                    <line x1="12" y1="18" x2="12" y2="12"></line>
+                    <line x1="9" y1="15" x2="15" y2="15"></line>
                   </svg>
-                  <span class="filename">{{ selectedFile.name }}</span>
-                  <span class="filesize">{{ (selectedFile.size / 1024 / 1024).toFixed(2) }} MB</span>
-                  <button v-if="!isUploading" @click.stop="selectedFile = null" class="remove-file-btn">Remove</button>
+                  <p>Drag & drop a PDF here</p>
+                  <p class="sub-text">or click to browse</p>
+                </template>
+                
+                <template v-else>
+                  <div class="file-info">
+                    <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="var(--accent-primary)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                      <polyline points="14 2 14 8 20 8"></polyline>
+                    </svg>
+                    <span class="filename">{{ selectedFile.name }}</span>
+                    <span class="filesize">{{ (selectedFile.size / 1024 / 1024).toFixed(2) }} MB</span>
+                    <button v-if="!isUploading" @click.stop="selectedFile = null" class="remove-file-btn">Remove</button>
+                  </div>
+                </template>
+              </div>
+
+              <div v-if="errorMsg" class="error-toast">{{ errorMsg }}</div>
+
+              <!-- Upload Progress -->
+              <div v-if="isUploading" class="upload-progress fade-in">
+                <div class="progress-info">
+                  <span>Ingesting document...</span>
+                  <span>{{ uploadProgress }}%</span>
                 </div>
-              </template>
-            </div>
-
-            <div v-if="errorMsg" class="error-toast">{{ errorMsg }}</div>
-
-            <!-- Upload Progress -->
-            <div v-if="isUploading" class="upload-progress fade-in">
-              <div class="progress-info">
-                <span>Ingesting document...</span>
-                <span>{{ uploadProgress }}%</span>
+                <div class="progress-bar-bg">
+                  <div class="progress-bar-fill" :style="{ width: `${uploadProgress}%` }"></div>
+                </div>
               </div>
-              <div class="progress-bar-bg">
-                <div class="progress-bar-fill" :style="{ width: `${uploadProgress}%` }"></div>
-              </div>
-            </div>
 
-            <button 
-              class="btn-primary upload-submit-btn" 
-              :disabled="!selectedFile || isUploading"
-              @click="handleUpload"
-            >
-              {{ isUploading ? 'Processing...' : 'Upload & Embed' }}
-            </button>
+              <button 
+                class="btn-primary upload-submit-btn" 
+                :disabled="!selectedFile || isUploading"
+                @click="handleUploadPdf"
+              >
+                {{ isUploading ? 'Processing...' : 'Upload & Embed' }}
+              </button>
+            </template>
+
+            <!-- URL Ingestion Tab -->
+            <template v-if="activeTab === 'url'">
+              <div class="url-input-container">
+                <label for="url-input" class="url-label">Website URL</label>
+                <input 
+                  id="url-input"
+                  v-model="urlInput"
+                  type="url" 
+                  placeholder="e.g. https://docs.example.com/getting-started"
+                  class="url-input"
+                  :disabled="isUploading"
+                  @keyup.enter="handleIngestUrl"
+                />
+                <p class="sub-text">We'll scrape the main content from this page and embed it.</p>
+              </div>
+
+              <div v-if="errorMsg" class="error-toast">{{ errorMsg }}</div>
+
+              <!-- Upload Progress -->
+              <div v-if="isUploading" class="upload-progress fade-in">
+                <div class="progress-info">
+                  <span>Scraping webpage...</span>
+                  <span>{{ uploadProgress }}%</span>
+                </div>
+                <div class="progress-bar-bg">
+                  <div class="progress-bar-fill" :style="{ width: `${uploadProgress}%` }"></div>
+                </div>
+              </div>
+
+              <button 
+                class="btn-primary upload-submit-btn" 
+                :disabled="!urlInput || isUploading"
+                @click="handleIngestUrl"
+              >
+                {{ isUploading ? 'Scraping...' : 'Import & Train' }}
+              </button>
+            </template>
           </template>
 
           <template v-else>
@@ -237,9 +370,9 @@ const handleUpload = async () => {
                   <polyline points="22 4 12 14.01 9 11.01"></polyline>
                 </svg>
               </div>
-              <h3>Document Ingested!</h3>
-              <p>The AI can now answer questions based on this document.</p>
-              <p class="sub-text" style="margin-top: 10px;">Ready for next upload...</p>
+              <h3>Knowledge Ingested!</h3>
+              <p>The AI can now answer questions based on this content.</p>
+              <p class="sub-text" style="margin-top: 10px;">Ready for next input...</p>
             </div>
           </template>
         </div>
@@ -310,6 +443,7 @@ const handleUpload = async () => {
   flex: 1;
   display: flex;
   flex-direction: column;
+  overflow-y: auto;
 }
 
 .description {
@@ -317,8 +451,6 @@ const handleUpload = async () => {
   font-size: 0.95rem;
   margin-bottom: var(--space-4);
 }
-
-
 
 .documents-section {
   margin-bottom: var(--space-6);
@@ -364,6 +496,21 @@ const handleUpload = async () => {
 .doc-icon {
   color: var(--accent-primary);
   display: flex;
+  align-items: center;
+}
+
+.badge {
+  font-size: 0.65rem;
+  font-weight: 600;
+  padding: 2px 6px;
+  border-radius: 4px;
+  white-space: nowrap;
+}
+
+.url-badge {
+  background: rgba(16, 185, 129, 0.1);
+  color: #10b981;
+  border: 1px solid rgba(16, 185, 129, 0.2);
 }
 
 .doc-details {
@@ -386,6 +533,14 @@ const handleUpload = async () => {
   color: var(--text-muted);
 }
 
+.doc-link {
+  color: var(--accent-primary);
+  text-decoration: none;
+}
+.doc-link:hover {
+  text-decoration: underline;
+}
+
 .delete-doc-btn {
   margin-left: auto;
   background: transparent;
@@ -405,22 +560,39 @@ const handleUpload = async () => {
   color: var(--accent-error);
 }
 
-.select-field {
-  width: 100%;
-  appearance: none;
-  background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23a1a1aa' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
-  background-repeat: no-repeat;
-  background-position: right 0.75rem center;
-  background-size: 1rem;
-  padding-right: 2.5rem;
-  cursor: pointer;
-  background-color: var(--bg-panel-light);
-  border: 1px solid var(--border-strong);
-  color: var(--text-primary);
+/* Tabs */
+.tabs {
+  display: flex;
+  background: var(--bg-panel-light);
   border-radius: 6px;
-  padding: var(--space-2) var(--space-3);
+  padding: 4px;
+  margin-bottom: var(--space-4);
 }
 
+.tab-btn {
+  flex: 1;
+  background: transparent;
+  border: none;
+  padding: 8px 12px;
+  font-size: 0.9rem;
+  color: var(--text-muted);
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  font-weight: 500;
+}
+
+.tab-btn:hover {
+  color: var(--text-primary);
+}
+
+.tab-btn.active {
+  background: var(--bg-panel);
+  color: var(--text-primary);
+  box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+}
+
+/* Dropzone */
 .dropzone {
   border: 2px dashed var(--border-strong);
   border-radius: 8px;
@@ -507,6 +679,42 @@ const handleUpload = async () => {
   background: rgba(239, 68, 68, 0.1);
   color: var(--accent-error);
   border-color: rgba(239, 68, 68, 0.3);
+}
+
+/* URL Input Container */
+.url-input-container {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin-bottom: var(--space-6);
+}
+
+.url-label {
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+.url-input {
+  width: 100%;
+  padding: 10px 14px;
+  border: 1px solid var(--border-strong);
+  border-radius: 6px;
+  background: var(--bg-dark);
+  color: var(--text-primary);
+  font-size: 0.95rem;
+  transition: all var(--transition-fast);
+}
+
+.url-input:focus {
+  outline: none;
+  border-color: var(--accent-primary);
+  box-shadow: 0 0 0 2px rgba(79, 70, 229, 0.2);
+}
+
+.url-input:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
 }
 
 .error-toast {

@@ -1,30 +1,30 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Plus+Jakarta+Sans:wght@500;600;700&display=swap');
 
 :root {
-  /* Light Theme Colors */
-  --bg-dark: #f8fafc; /* Primary background */
-  --bg-panel: #ffffff; /* Card & Panel Background */
-  --bg-panel-light: #f1f5f9; /* Hover or slight variation */
-  --bg-panel-hover: #e2e8f0;
+  /* Modern Dark Theme Colors */
+  --bg-dark: #0b0f19; /* Primary background */
+  --bg-panel: #111827; /* Card & Panel Background */
+  --bg-panel-light: #1f2937; /* Hover or slight variation */
+  --bg-panel-hover: #374151;
   
   /* Indigo/Violet Accent */
-  --accent-primary: #4f46e5; 
-  --accent-primary-hover: #4338ca;
-  --accent-secondary: #7c3aed;
+  --accent-primary: #8b5cf6; /* Electric Purple */
+  --accent-primary-hover: #a78bfa;
+  --accent-secondary: #06b6d4; /* Neon Cyan */
   --accent-success: #10b981;
   --accent-error: #ef4444;
 
   /* Typography Colors */
-  --text-primary: #0f172a; /* Headings */
-  --text-secondary: #334155; /* Body Text */
-  --text-muted: #64748b; /* Muted */
+  --text-primary: #f8fafc; /* Headings */
+  --text-secondary: #cbd5e1; /* Body Text */
+  --text-muted: #94a3b8; /* Muted */
 
   /* Borders & Shadows */
-  --border-light: #e2e8f0;
-  --border-strong: #cbd5e1;
-  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
-  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.04);
-  --shadow-lg: 0 10px 25px rgba(0, 0, 0, 0.05);
+  --border-light: rgba(255, 255, 255, 0.1);
+  --border-strong: rgba(255, 255, 255, 0.2);
+  --shadow-sm: 0 4px 6px -1px rgba(0, 0, 0, 0.3);
+  --shadow-md: 0 10px 15px -3px rgba(0, 0, 0, 0.4);
+  --shadow-lg: 0 20px 25px -5px rgba(0, 0, 0, 0.5);
   
   /* Spacing */
   --space-1: 0.25rem;

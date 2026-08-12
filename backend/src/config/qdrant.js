@@ -36,11 +36,11 @@ export const initQdrantCollection = async () => {
         field_schema: 'keyword',
       });
 
-      console.log(`✅ Qdrant Collection '${COLLECTION_NAME}' created with botId index.`);
+      console.log(` Qdrant Collection '${COLLECTION_NAME}' created with botId index.`);
     } else {
-      console.log(`✅ Qdrant Collection '${COLLECTION_NAME}' is ready.`);
+      console.log(` Qdrant Collection '${COLLECTION_NAME}' is ready.`);
     }
   } catch (error) {
-    console.error('❌ Error initializing Qdrant Collection:', error.message);
+    console.error(' Error initializing Qdrant Collection:', error.message);
   }
 };

@@ -62,6 +62,8 @@ import Document from '../models/Document.js';
 import { processAndEmbedDocument, deleteDocumentVectors } from '../services/ragService.js';
 import { parsePdfMultimodal } from '../services/pdfParserService.js';
 import mongoose from 'mongoose';
+import axios from 'axios';
+import * as cheerio from 'cheerio';
 
 export const uploadDocument = async (req, res) => {
   try {
@@ -120,6 +122,94 @@ export const uploadDocument = async (req, res) => {
     });
   }
 };
+
+export const ingestUrl = async (req, res) => {
+  try {
+    const { url, botId } = req.body;
+
+    // 1. Validation
+    if (!url || typeof url !== 'string' || !url.startsWith('http')) {
+      return res.status(400).json({ status: 'error', message: 'Please provide a valid HTTP/HTTPS URL' });
+    }
+    if (!botId || !mongoose.Types.ObjectId.isValid(botId)) {
+      return res.status(400).json({ status: 'fail', message: 'Valid 24-character MongoDB Bot ID is required' });
+    }
+
+    // 2. Fetch HTML
+    const response = await axios.get(url, {
+      timeout: 10000, // 10 seconds timeout
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+        'Accept-Language': 'en-US,en;q=0.5',
+        'Cache-Control': 'no-cache',
+        'Pragma': 'no-cache'
+      }
+    });
+
+    // 3. Parse HTML
+    const $ = cheerio.load(response.data);
+    
+    // Remove unwanted elements
+    $('script, style, noscript, iframe, nav, header, footer, aside').remove();
+    
+    let title = $('title').text().trim();
+    if (!title) {
+      try {
+        const urlObj = new URL(url);
+        title = urlObj.hostname;
+      } catch (e) {
+        title = 'Web Page';
+      }
+    }
+
+    // Try to get main content, fallback to body
+    let content = $('main').text() || $('article').text() || $('body').text();
+    
+    // Clean up whitespace
+    content = content.replace(/\s+/g, ' ').trim();
+
+    if (!content) {
+      return res.status(400).json({ status: 'error', message: 'Could not extract readable text from this URL' });
+    }
+
+    // 4. Save Document Record in MongoDB
+    const document = await Document.create({
+      botId,
+      userId: req.user?._id || botId, // Fallback if user middleware isn't attached
+      filename: title,
+      fileType: 'url',
+      sourceUrl: url,
+      status: 'processing',
+    });
+
+    // 5. Process Text & Push Embeddings to Qdrant
+    const { characterCount, chunkCount } = await processAndEmbedDocument({
+      extractedText: content,
+      botId,
+      documentId: document._id,
+    });
+
+    // 6. Update Document Status
+    document.characterCount = characterCount;
+    document.chunkCount = chunkCount;
+    document.status = 'ready';
+    await document.save();
+
+    res.status(201).json({
+      status: 'success',
+      message: 'URL ingested and embedded into Knowledge Base successfully!',
+      data: { document },
+    });
+  } catch (error) {
+    console.error('❌ URL Ingestion Error:', error);
+    res.status(500).json({
+      status: 'error',
+      message: error.message || 'Failed to scrape and ingest URL',
+    });
+  }
+};
+
 
 export const getDocuments = async (req, res) => {
   try {

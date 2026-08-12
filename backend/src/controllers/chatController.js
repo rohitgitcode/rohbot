@@ -188,10 +188,12 @@ CRITICAL OUTPUT & FORMATTING RULES:
 // 2. Get All User Chats (For Sidebar List)
 export const getUserChats = async (req, res) => {
   try {
-    const query = { userId: req.user._id };
-    if (req.query.botId) {
-      query.botId = req.query.botId;
+    const { botId } = req.query;
+    if (!botId) {
+      return res.status(400).json({ status: 'fail', message: 'botId query parameter is required for workspace isolation' });
     }
+
+    const query = { userId: req.user._id, botId };
     
     const chats = await Chat.find(query)
       .select('title createdAt updatedAt botId')

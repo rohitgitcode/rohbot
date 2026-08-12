@@ -1,98 +1,61 @@
-import bcrypt from 'bcryptjs';
-import jwt from 'jsonwebtoken';
-import User from '../models/User.js';
-
-// JWT Token Generate karne ka Helper Function
-const generateToken = (userId) => {
-  return jwt.sign({ id: userId }, process.env.JWT_SECRET, {
-    expiresIn: '7d', // 7 dino ke liye valid rahega
-  });
-};
+import {
+  signupUser,
+  loginUser,
+} from '../services/authService.js';
 
 // @desc    Register a new user
 // @route   POST /api/auth/signup
-export const signup = async (req, res) => {
+export const signup = async (req, res, next) => {
   try {
     const { name, email, password } = req.body;
-
-    // Validation
     if (!name || !email || !password) {
-      return res.status(400).json({ status: 'fail', message: 'All fields are required' });
+      return res.status(400).json({
+        status: 'fail',
+        message: 'Name, email and password are required',
+      });
     }
 
-    // Check if user already exists
-    const existingUser = await User.findOne({ email });
-    if (existingUser) {
-      return res.status(400).json({ status: 'fail', message: 'User already exists with this email' });
-    }
-
-    // Password Hash karo (Security Best Practice)
-    const salt = await bcrypt.genSalt(10);
-    const hashedPassword = await bcrypt.hash(password, salt);
-
-    // User Create karo
-    const user = await User.create({
+    const result = await signupUser({
       name,
       email,
-      password: hashedPassword,
+      password,
     });
 
-    // Token Generate karo
-    const token = generateToken(user._id);
-
-    res.status(201).json({
+    return res.status(201).json({
       status: 'success',
       message: 'Account created successfully',
-      token,
-      user: {
-        id: user._id,
-        name: user.name,
-        email: user.email,
-        role: user.role,
-      },
+      ...result,
     });
   } catch (error) {
-    res.status(500).json({ status: 'error', message: error.message });
+    next(error);
   }
 };
 
 // @desc    Login user
 // @route   POST /api/auth/login
-export const login = async (req, res) => {
+export const login = async (req, res, next) => {
   try {
     const { email, password } = req.body;
 
     if (!email || !password) {
-      return res.status(400).json({ status: 'fail', message: 'Email and password are required' });
+      return res.status(400).json({
+        status: 'fail',
+        message: 'Email and password are required',
+      });
     }
 
-    // User dhoondho aur password explicitly select karo
-    const user = await User.findOne({ email }).select('+password');
-    if (!user) {
-      return res.status(401).json({ status: 'fail', message: 'Invalid credentials' });
-    }
+    const result = await loginUser({
+      email,
+      password,
+    });
 
-    // Password Match Check karo
-    const isPasswordMatch = await bcrypt.compare(password, user.password);
-    if (!isPasswordMatch) {
-      return res.status(401).json({ status: 'fail', message: 'Invalid credentials' });
-    }
-
-    // Token generate karo
-    const token = generateToken(user._id);
-
-    res.status(200).json({
+    return res.status(200).json({
       status: 'success',
       message: 'Logged in successfully',
-      token,
-      user: {
-        id: user._id,
-        name: user.name,
-        email: user.email,
-        role: user.role,
-      },
+      ...result,
     });
   } catch (error) {
-    res.status(500).json({ status: 'error', message: error.message });
+    next(error);
   }
 };
+

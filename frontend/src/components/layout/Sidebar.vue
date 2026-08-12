@@ -10,13 +10,13 @@ const emit = defineEmits<{
 }>()
 
 const handleSelectBot = (botId: string) => {
-  chatStore.setActiveBot(botId)
+  chatStore.switchWorkspace(botId)
   isCustomBotInputOpen.value = false
 }
 
 const handleSetCustomBot = () => {
   if (customBotId.value.trim()) {
-    chatStore.setActiveBot(customBotId.value.trim())
+    chatStore.switchWorkspace(customBotId.value.trim())
     isCustomBotInputOpen.value = false
     customBotId.value = ''
   }
@@ -100,7 +100,7 @@ const handleBulkDelete = async () => {
       <div class="custom-select">
         <select 
           :value="chatStore.activeBotId" 
-          @change="chatStore.setActiveBot(($event.target as HTMLSelectElement).value)"
+          @change="chatStore.switchWorkspace(($event.target as HTMLSelectElement).value)"
           class="input-field select-field"
         >
           <option v-for="bot in chatStore.bots" :key="bot._id" :value="bot._id">

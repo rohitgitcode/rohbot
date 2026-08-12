@@ -20,8 +20,12 @@ const documentSchema = new mongoose.Schema(
     },
     fileType: {
       type: String,
-      enum: ['pdf', 'txt', 'faq'],
+      enum: ['pdf', 'txt', 'faq', 'url'],
       default: 'pdf',
+    },
+    sourceUrl: {
+      type: String,
+      default: '',
     },
     characterCount: {
       type: Number,

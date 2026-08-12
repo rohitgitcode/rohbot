@@ -1,6 +1,6 @@
 import express from 'express';
 import multer from 'multer';
-import { uploadDocument, getDocuments, deleteDocument } from '../controllers/documentController.js';
+import { uploadDocument, getDocuments, deleteDocument, ingestUrl } from '../controllers/documentController.js';
 import { protect } from '../middleware/authMiddleware.js';
 
 import rateLimit from 'express-rate-limit';
@@ -18,6 +18,9 @@ router.use(protect);
 
 // Endpoint: POST /api/documents/upload
 router.post('/upload', uploadLimiter, upload.single('file'), uploadDocument);
+
+// Endpoint: POST /api/documents/ingest-url
+router.post('/ingest-url', uploadLimiter, ingestUrl);
 
 // Endpoint: GET /api/documents?botId=...
 router.get('/', getDocuments);

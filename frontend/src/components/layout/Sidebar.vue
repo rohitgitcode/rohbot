@@ -75,12 +75,8 @@ const handleBulkDelete = async () => {
     <!-- Brand Header -->
     <div class="brand-header">
       <div class="logo">
-        <div class="brand-icon">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-            <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
-            <path d="M12 8v8"></path>
-            <path d="M8 12h8"></path>
-          </svg>
+        <div class="brand-icon new-brand-icon">
+          <img src="/logo.png" alt="RohBot Logo" class="brand-img" />
         </div>
         <h1>RohBot</h1>
       </div>
@@ -277,6 +273,18 @@ const handleBulkDelete = async () => {
   align-items: center;
   justify-content: center;
   box-shadow: var(--shadow-sm);
+  overflow: hidden;
+}
+
+.new-brand-icon {
+  background: transparent;
+  box-shadow: none;
+}
+
+.brand-img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
 }
 
 .logo h1 {

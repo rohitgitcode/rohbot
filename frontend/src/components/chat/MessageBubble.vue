@@ -157,7 +157,7 @@ const retryMessage = () => {
 
 .user-avatar {
   background: var(--accent-primary);
-  color: #111;
+  color: #ffffff;
   box-shadow: var(--shadow-sm);
 }
 
@@ -191,7 +191,7 @@ const retryMessage = () => {
 }
 
 .is-user .bubble {
-  background: linear-gradient(135deg, #4f46e5, #6366f1);
+  background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
   border-radius: 12px 12px 0 12px;
   color: #ffffff;
   border: none;
@@ -199,10 +199,10 @@ const retryMessage = () => {
 }
 
 .message-wrapper:not(.is-user) .bubble {
-  background: #ffffff;
+  background: var(--bg-panel);
   border-radius: 0 12px 12px 12px;
-  border: 1px solid #e2e8f0;
-  color: #1e293b;
+  border: 1px solid var(--border-light);
+  color: var(--text-primary);
   box-shadow: var(--shadow-md);
 }
 

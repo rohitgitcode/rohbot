@@ -18,19 +18,44 @@ const sanitizeAiResponse = (rawReply) => {
   cleaned = cleaned.replace(/<think>[\s\S]*?<\/think>/gi, '');
   cleaned = cleaned.replace(/<reasoning>[\s\S]*?<\/reasoning>/gi, '');
 
-  // 2. Strip explicit thinking or self-correction headers up until the actual formatted answer
-  cleaned = cleaned.replace(/(?:Thinking Process|Self-Correction|Chain of Thought|Drafting Response|Excerpt \d+):[\s\S]*?(?=\n\n|\n[A-Z0-9#]|To |How |Here |1\.)/gi, '');
+  // 2. Strip explicit reasoning/planning keywords and preamble blocks
+  const reasoningKeywords = [
+    'the user is asking',
+    'i need to check',
+    'the context lists sections',
+    'therefore, i must follow',
+    'plan:',
+    'i must strictly follow'
+  ];
 
-  // 3. Fallback: If "Thinking Process:" appears at the start, remove everything up to the first clean numbered list or response marker
-  if (cleaned.toLowerCase().includes('thinking process:')) {
+  const lowerCleaned = cleaned.toLowerCase();
+  const hasReasoningLeak = reasoningKeywords.some(keyword => lowerCleaned.includes(keyword));
+
+  if (hasReasoningLeak) {
     const lines = cleaned.split('\n');
-    const answerStartIndex = lines.findIndex(line => 
-      line.trim().match(/^(1\.|#|To |How |Here |In |For |Step )/i)
-    );
+    const answerStartIndex = lines.findIndex(line => {
+      const trimmed = line.trim();
+      return (
+        trimmed.startsWith('Based on') ||
+        trimmed.startsWith('According to') ||
+        trimmed.startsWith('Here') ||
+        trimmed.startsWith('The provided') ||
+        trimmed.startsWith('Section') ||
+        trimmed.startsWith('Chapter') ||
+        trimmed.startsWith('1.') ||
+        trimmed.startsWith('#') ||
+        trimmed.startsWith('*') ||
+        trimmed.startsWith('-')
+      );
+    });
+
     if (answerStartIndex !== -1) {
       cleaned = lines.slice(answerStartIndex).join('\n');
     }
   }
+
+  // 3. Remove remaining headers at the top
+  cleaned = cleaned.replace(/^(Thinking Process|Plan|Self-Correction|Chain of Thought):?\s*/gi, '');
 
   return cleaned.trim();
 };
@@ -141,6 +166,11 @@ CRITICAL OUTPUT & FORMATTING RULES:
    - If the user's question cannot be directly answered using ONLY the context provided above (or if context is NO_CONTEXT_FOUND), you MUST politely refuse to answer using exactly this response:
      "I am sorry, but I don't have information about that in the uploaded document knowledge base."
    - DO NOT use your general pre-trained knowledge or external facts to answer questions outside the context.
+5. RAG & OUTLINE HANDLING:
+   - If the user asks for detailed explanations, but the retrieved context only contains section titles, indexes, or table-of-contents headings:
+     a. List the relevant section headings found in the context clearly.
+     b. Politely inform the user that the current context contains the document outline/index and suggest importing the specific chapter/sub-page for full details.
+   - NEVER output internal reasoning, self-questioning, or chain-of-thought analysis.
 `.trim();
 
     // Append user message to thread history
@@ -160,15 +190,18 @@ CRITICAL OUTPUT & FORMATTING RULES:
       messages: apiMessages,
       model: 'qwen/qwen3.6-27b',
       max_tokens: 800,
+      reasoning_format: 'hidden',
     });
 
     const rawAiResponse = chatCompletion.choices[0]?.message?.content || '';
-
-    // Apply multi-stage sanitization to scrub reasoning headers and tags
     const cleanedReply = sanitizeAiResponse(rawAiResponse);
 
     // Append cleaned AI response to thread history
-    chat.messages.push({ role: 'assistant', content: cleanedReply });
+    chat.messages.push({ 
+      role: 'assistant', 
+      content: cleanedReply,
+      hasContext: !!retrievedContext
+    });
 
     // Save updated conversation thread in MongoDB
     await chat.save();
@@ -177,6 +210,7 @@ CRITICAL OUTPUT & FORMATTING RULES:
       status: 'success',
       chatId: chat._id,
       reply: cleanedReply,
+      hasContext: !!retrievedContext,
       chatHistory: chat.messages,
     });
   } catch (error) {

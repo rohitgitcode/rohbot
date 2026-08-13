@@ -4,8 +4,9 @@ import { useChatStore } from '../../stores/chatStore'
 import MessageBubble from '../chat/MessageBubble.vue'
 
 const chatStore = useChatStore()
-const emit = defineProps<{
-  onOpenUpload: () => void
+const emit = defineEmits<{
+  (e: 'openUpload'): void
+  (e: 'openEmbed'): void
 }>()
 
 const activeBotName = computed(() => {
@@ -79,6 +80,13 @@ watch(() => chatStore.currentMessages.length, () => {
       </div>
       
       <div class="header-actions">
+        <button @click="$emit('openEmbed')" class="btn-secondary embed-btn" style="margin-right: 8px;">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="16 18 22 12 16 6"></polyline>
+            <polyline points="8 6 2 12 8 18"></polyline>
+          </svg>
+          Embed Widget
+        </button>
         <button @click="$emit('openUpload')" class="btn-secondary upload-btn">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>

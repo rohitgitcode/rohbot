@@ -7,8 +7,10 @@ import authRoutes from './routes/authRoutes.js';
 import chatRoutes from './routes/chatRoutes.js';
 import botRoutes from './routes/botRoutes.js';
 import documentRoutes from './routes/documentRoutes.js';
+import widgetRoutes from './routes/widgetRoutes.js';
 import { initQdrantCollection } from './config/qdrant.js';
-
+import path from 'path';
+import { fileURLToPath } from 'url';
 
 
 initQdrantCollection(); 
@@ -37,6 +39,12 @@ app.use('/api/auth', authRoutes);
 app.use('/api/chat', chatRoutes);
 app.use('/api/bots', botRoutes);
 app.use('/api/documents', documentRoutes);
+app.use('/api/public', widgetRoutes);
+
+// Serve static files from public directory (for widget.js)
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+app.use(express.static(path.join(__dirname, '../public')));
 
 // Base Route
 app.get('/', (req, res) => {

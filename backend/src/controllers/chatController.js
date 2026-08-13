@@ -152,25 +152,17 @@ export const sendMessage = async (req, res) => {
       : `
 ${botInstruction}
 
-You are a strict Document Grounded Assistant. Your primary knowledge base is provided in the "Relevant Knowledge Base Context" block below.
+You are an advanced, intelligent AI Assistant. You have access to the "Relevant Knowledge Base Context" below.
 
 Relevant Knowledge Base Context:
 ${retrievedContext ? retrievedContext : 'NO_CONTEXT_FOUND'}
 
 CRITICAL OUTPUT & FORMATTING RULES:
-1. DIRECT FINAL RESPONSE ONLY: NEVER include your internal thinking process, chain-of-thought, self-corrections, or analysis in your reply.
-2. NO THINKING HEADERS: NEVER write headers like "Thinking Process:", "Self-Correction:", "Excerpt 1:", or "Drafting Response:".
-3. NO REASONING TAGS: Do NOT wrap any text inside <think> or <reasoning> tags.
-4. STRICT RAG GROUNDING:
-   - You MUST ONLY answer questions using the explicit facts and information provided in the "Relevant Knowledge Base Context" above.
-   - If the user's question cannot be directly answered using ONLY the context provided above (or if context is NO_CONTEXT_FOUND), you MUST politely refuse to answer using exactly this response:
-     "I am sorry, but I don't have information about that in the uploaded document knowledge base."
-   - DO NOT use your general pre-trained knowledge or external facts to answer questions outside the context.
-5. RAG & OUTLINE HANDLING:
-   - If the user asks for detailed explanations, but the retrieved context only contains section titles, indexes, or table-of-contents headings:
-     a. List the relevant section headings found in the context clearly.
-     b. Politely inform the user that the current context contains the document outline/index and suggest importing the specific chapter/sub-page for full details.
-   - NEVER output internal reasoning, self-questioning, or chain-of-thought analysis.
+1. Provide a comprehensive, clear, and high-quality answer to the user's question based primarily on the provided context.
+2. If the context does not contain the full answer, you may supplement it with your own general knowledge, but try to remain relevant to the workspace topic. Be helpful and natural.
+3. Use Markdown formatting (bolding, lists, code blocks, etc.) to structure your response beautifully and make it easy to read.
+4. DIRECT FINAL RESPONSE ONLY: NEVER include your internal thinking process, chain-of-thought, self-corrections, or analysis in your reply. Do not use <think> tags.
+5. Be polite and professional.
 `.trim();
 
     // Append user message to thread history
@@ -185,12 +177,11 @@ CRITICAL OUTPUT & FORMATTING RULES:
       })),
     ];
 
-    // Call Groq API with Qwen model
+    // Call Groq API with better model
     const chatCompletion = await groq.chat.completions.create({
       messages: apiMessages,
-      model: 'qwen/qwen3.6-27b',
-      max_tokens: 800,
-      reasoning_format: 'hidden',
+      model: 'llama-3.1-8b-instant',
+      max_tokens: 1500,
     });
 
     const rawAiResponse = chatCompletion.choices[0]?.message?.content || '';

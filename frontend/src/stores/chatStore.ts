@@ -82,11 +82,13 @@ export const useChatStore = defineStore('chat', () => {
             switchWorkspace(firstBot._id)
           } else {
             fetchDocuments(activeBotId.value)
+            fetchChatHistory(activeBotId.value)
           }
         } else {
           bots.value = []
           activeBotId.value = ''
           documents.value = []
+          chatHistory.value = []
         }
       }
     } catch (e) {
@@ -384,6 +386,36 @@ export const useChatStore = defineStore('chat', () => {
     return false
   }
 
+  const deleteBot = async (botId: string) => {
+    if (!isAuthenticated.value) return false
+    try {
+      const res = await fetch(`${API_BASE}/api/bots/${botId}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token.value}`
+        }
+      })
+      if (res.ok) {
+        bots.value = bots.value.filter(b => b._id !== botId)
+        if (activeBotId.value === botId) {
+          if (bots.value.length > 0) {
+            switchWorkspace(bots.value[0]._id)
+          } else {
+            activeBotId.value = ''
+            chatHistory.value = []
+            documents.value = []
+            currentMessages.value = []
+            currentChatId.value = null
+          }
+        }
+        return true
+      }
+    } catch (e) {
+      console.error('Failed to delete workspace:', e)
+    }
+    return false
+  }
+
   return {
     token,
     isAuthenticated,
@@ -408,6 +440,7 @@ export const useChatStore = defineStore('chat', () => {
     ingestUrl,
     deleteDocument,
     deleteThread,
-    bulkDeleteThreads
+    bulkDeleteThreads,
+    deleteBot
   }
 })

@@ -31,6 +31,16 @@ const handleDeleteThread = async (threadId: string) => {
   }
 }
 
+const handleDeleteWorkspace = async () => {
+  if (!chatStore.activeBotId || chatStore.activeBotId === 'custom') return
+  if (confirm('Are you sure you want to delete this workspace? This action cannot be undone.')) {
+    const success = await chatStore.deleteBot(chatStore.activeBotId)
+    if (!success) {
+      alert('Failed to delete workspace')
+    }
+  }
+}
+
 const isSelectMode = ref(false)
 const selectedThreadIds = ref<string[]>([])
 
@@ -86,12 +96,20 @@ const handleBulkDelete = async () => {
     <div class="bot-switcher">
       <div class="bot-switcher-header">
         <label>Workspace</label>
-        <button @click="$emit('openCreate')" class="add-bot-btn" title="Create Workspace">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-            <line x1="12" y1="5" x2="12" y2="19"></line>
-            <line x1="5" y1="12" x2="19" y2="12"></line>
-          </svg>
-        </button>
+        <div class="bot-actions">
+          <button v-if="chatStore.activeBotId && chatStore.activeBotId !== 'custom'" @click="handleDeleteWorkspace" class="action-btn delete-bot-btn" title="Delete Workspace">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="3 6 5 6 21 6"></polyline>
+              <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+            </svg>
+          </button>
+          <button @click="$emit('openCreate')" class="action-btn add-bot-btn" title="Create Workspace">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="12" y1="5" x2="12" y2="19"></line>
+              <line x1="5" y1="12" x2="19" y2="12"></line>
+            </svg>
+          </button>
+        </div>
       </div>
       <div class="custom-select">
         <select 
@@ -315,7 +333,12 @@ const handleBulkDelete = async () => {
   align-items: center;
 }
 
-.add-bot-btn {
+.bot-actions {
+  display: flex;
+  gap: 4px;
+}
+
+.action-btn {
   background: transparent;
   border: none;
   color: var(--text-muted);
@@ -328,9 +351,14 @@ const handleBulkDelete = async () => {
   transition: all var(--transition-fast);
 }
 
-.add-bot-btn:hover {
+.action-btn:hover {
   background: var(--bg-panel-light);
   color: var(--text-primary);
+}
+
+.delete-bot-btn:hover {
+  background: rgba(220, 38, 38, 0.1);
+  color: #dc2626;
 }
 
 .select-field {

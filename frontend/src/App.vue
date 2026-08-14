@@ -7,11 +7,17 @@ import KnowledgeBaseDrawer from './components/ui/KnowledgeBaseDrawer.vue'
 import WidgetEmbedModal from './components/ui/WidgetEmbedModal.vue'
 import LoginModal from './components/ui/LoginModal.vue'
 import CreateBotModal from './components/ui/CreateBotModal.vue'
+import HomePage from './components/layout/HomePage.vue'
+import { useTheme } from './composables/useTheme'
 
 const chatStore = useChatStore()
+const { isDark } = useTheme() // Initializes theme on mount
+
 const isUploadModalOpen = ref(false)
 const isEmbedModalOpen = ref(false)
 const isCreateModalOpen = ref(false)
+const isLoginModalOpen = ref(false)
+const loginMode = ref(true)
 
 const checkOnboarding = () => {
   if (chatStore.bots.length === 0) {
@@ -28,9 +34,15 @@ onMounted(async () => {
 })
 
 const handleLoginSuccess = async () => {
+  isLoginModalOpen.value = false
   await chatStore.fetchBots()
   await chatStore.fetchChatHistory()
   checkOnboarding()
+}
+
+const openLogin = (isLogin: boolean) => {
+  loginMode.value = isLogin
+  isLoginModalOpen.value = true
 }
 </script>
 
@@ -57,7 +69,13 @@ const handleLoginSuccess = async () => {
     </template>
     
     <template v-else>
-      <LoginModal @success="handleLoginSuccess" />
+      <HomePage v-if="!isLoginModalOpen" @open-login="openLogin" />
+      <LoginModal 
+        v-else 
+        :initial-mode="loginMode"
+        @success="handleLoginSuccess" 
+        @close="isLoginModalOpen = false"
+      />
     </template>
   </div>
 </template>

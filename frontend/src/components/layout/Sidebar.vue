@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { useChatStore } from '../../stores/chatStore'
+import ThemeToggle from '../ui/ThemeToggle.vue'
+
 const chatStore = useChatStore()
 const isCustomBotInputOpen = ref(false)
 const customBotId = ref('')
@@ -244,13 +246,16 @@ const handleBulkDelete = async () => {
           <span class="user-role">Workspace Admin</span>
         </div>
       </div>
-      <button @click="chatStore.logout" class="logout-btn" title="Sign Out">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
-          <polyline points="16 17 21 12 16 7"></polyline>
-          <line x1="21" y1="12" x2="9" y2="12"></line>
-        </svg>
-      </button>
+      <div class="user-footer-actions">
+        <ThemeToggle />
+        <button @click="chatStore.logout" class="logout-btn" title="Sign Out">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+            <polyline points="16 17 21 12 16 7"></polyline>
+            <line x1="21" y1="12" x2="9" y2="12"></line>
+          </svg>
+        </button>
+      </div>
     </div>
     
   </aside>
@@ -654,6 +659,12 @@ const handleBulkDelete = async () => {
 .user-role {
   font-size: 0.7rem;
   color: var(--text-muted);
+}
+
+.user-footer-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
 }
 
 .logout-btn {

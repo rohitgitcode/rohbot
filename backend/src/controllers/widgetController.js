@@ -50,7 +50,7 @@ const sanitizeAiResponse = (rawReply) => {
 
 export const publicChat = async (req, res) => {
   try {
-    const { botId, message, sessionId } = req.body;
+    const { botId, message, sessionId, history = [] } = req.body;
 
     if (!botId) {
       return res.status(400).json({ status: 'fail', message: 'botId is required for public chat' });
@@ -87,7 +87,11 @@ export const publicChat = async (req, res) => {
     
     if (!isGreeting) {
       const results = await searchRelevantContext(message, botId);
-      retrievedContext = results.map((r, i) => `Excerpt ${i + 1}:\n${r.text}`).join('\n\n');
+      retrievedContext = results
+        .map(c => typeof c === 'string' ? c : (c?.payload?.text || c?.text || ''))
+        .filter(Boolean)
+        .map((r, i) => `Excerpt ${i + 1}:\n${r}`)
+        .join('\n\n');
     }
 
     const botInstruction = bot.systemPrompt || 'You are a helpful assistant.';
@@ -118,12 +122,24 @@ CRITICAL OUTPUT & FORMATTING RULES:
    - NEVER output internal reasoning, self-questioning, or chain-of-thought analysis.
 `.trim();
 
-    // In a full implementation, you would store this chat thread via sessionId. 
-    // For this widget MVP, we will only pass the latest user message.
     const apiMessages = [
-      { role: 'system', content: systemPrompt },
-      { role: 'user', content: message }
+      { role: 'system', content: systemPrompt }
     ];
+
+    // Append context history (last few messages) to maintain conversation state
+    if (Array.isArray(history)) {
+      history.forEach(msg => {
+        if (msg.role === 'user' || msg.role === 'bot' || msg.role === 'assistant') {
+          apiMessages.push({
+            role: msg.role === 'bot' ? 'assistant' : msg.role,
+            content: msg.content
+          });
+        }
+      });
+    }
+
+    // Append the latest user message
+    apiMessages.push({ role: 'user', content: message });
 
     const chatCompletion = await groq.chat.completions.create({
       messages: apiMessages,

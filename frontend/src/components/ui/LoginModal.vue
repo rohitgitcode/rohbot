@@ -3,8 +3,13 @@ import { ref } from 'vue'
 import { useChatStore } from '../../stores/chatStore'
 
 const chatStore = useChatStore()
+const props = defineProps<{
+  initialMode?: boolean
+}>()
+
 const emit = defineEmits<{
   (e: 'success'): void
+  (e: 'close'): void
 }>()
 
 const name = ref('')
@@ -12,7 +17,7 @@ const email = ref('')
 const password = ref('')
 const customToken = ref('')
 const isDevMode = ref(false)
-const isLoginMode = ref(true)
+const isLoginMode = ref(props.initialMode ?? true)
 const isLoading = ref(false)
 const errorMsg = ref('')
 
@@ -74,10 +79,23 @@ const handleAuth = async () => {
 <template>
   <div class="login-wrapper">
     <div class="login-card fade-in">
+      <button class="close-btn" @click="emit('close')" aria-label="Close">
+        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+      </button>
       <div class="login-header">
         <div class="logo">
           <div class="brand-icon new-brand-icon">
-            <img src="/logo.png" alt="RohBot Logo" class="brand-img" />
+            <svg width="40" height="40" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <rect width="32" height="32" rx="8" fill="url(#logo-grad-login)" />
+              <path d="M10 12C10 10.8954 10.8954 10 12 10H16.5C18.9853 10 21 12.0147 21 14.5C21 16.9853 18.9853 19 16.5 19H12V22" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+              <path d="M16 19L21 24" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+              <defs>
+                <linearGradient id="logo-grad-login" x1="0" y1="0" x2="32" y2="32" gradientUnits="userSpaceOnUse">
+                  <stop stop-color="#8b5cf6" />
+                  <stop offset="1" stop-color="#06b6d4" />
+                </linearGradient>
+              </defs>
+            </svg>
           </div>
           <h1>RohBot AI</h1>
         </div>
@@ -92,7 +110,7 @@ const handleAuth = async () => {
               v-model="name" 
               type="text" 
               class="input-field" 
-              placeholder="John Doe"
+              placeholder="Rohit Kumar"
               @keyup.enter="handleAuth"
             />
           </div>
@@ -177,6 +195,28 @@ const handleAuth = async () => {
   border: 1px solid var(--border-light);
   border-radius: 12px;
   box-shadow: var(--shadow-lg);
+  position: relative;
+}
+
+.close-btn {
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  transition: all var(--transition-fast);
+}
+
+.close-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--text-primary);
 }
 
 .login-header {

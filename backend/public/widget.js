@@ -16,6 +16,22 @@
     localStorage.setItem(sessionKey, sessionId);
   }
 
+  const historyKey = `rohbot_history_${botId}`;
+  let chatHistory = [];
+  try {
+    chatHistory = JSON.parse(localStorage.getItem(historyKey) || '[]');
+  } catch (e) {
+    chatHistory = [];
+  }
+
+  const saveHistory = () => {
+    try {
+      // Keep only last 50 messages to prevent storage issues
+      if (chatHistory.length > 50) chatHistory = chatHistory.slice(-50);
+      localStorage.setItem(historyKey, JSON.stringify(chatHistory));
+    } catch (e) {}
+  };
+
   // Container
   const container = document.createElement('div');
   container.id = 'rohbot-widget-container';
@@ -332,9 +348,7 @@
         </svg>
       </button>
     </div>
-    <div class="chat-body" id="chat-body">
-      <div class="message bot">Hi there! How can I help you today?</div>
-    </div>
+    <div class="chat-body" id="chat-body"></div>
     <div class="chat-footer">
       <div class="input-wrapper">
         <input type="text" class="chat-input" id="chat-input" placeholder="Type your message..." autocomplete="off">
@@ -389,11 +403,11 @@
     chatBody.scrollTop = chatBody.scrollHeight;
   };
 
-  const addMessage = (text, sender) => {
+  const addMessage = (text, sender, save = true) => {
     const msgDiv = document.createElement('div');
     msgDiv.className = `message ${sender}`;
     
-    if (sender === 'bot') {
+    if (sender === 'bot' || sender === 'assistant') {
       // Basic markdown parsing for bold and code
       let html = text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
       html = html.replace(/```([\s\S]*?)```/g, '<pre><code>$1</code></pre>');
@@ -406,8 +420,21 @@
     
     chatBody.appendChild(msgDiv);
     scrollToBottom();
+    
+    if (save) {
+      chatHistory.push({ role: sender, content: text });
+      saveHistory();
+    }
+    
     return msgDiv;
   };
+
+  // Initialize History
+  if (chatHistory.length === 0) {
+    addMessage('Hi there! How can I help you today?', 'bot', true);
+  } else {
+    chatHistory.forEach(msg => addMessage(msg.content, msg.role, false));
+  }
 
   const showTyping = () => {
     const div = document.createElement('div');
@@ -457,7 +484,8 @@
         body: JSON.stringify({
           botId,
           message: text,
-          sessionId
+          sessionId,
+          history: chatHistory.slice(-7, -1) // send previous context (excluding current message we just pushed)
         })
       });
       

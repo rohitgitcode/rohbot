@@ -26,6 +26,37 @@
   --shadow-md: 0 10px 15px -3px rgba(0, 0, 0, 0.4);
   --shadow-lg: 0 20px 25px -5px rgba(0, 0, 0, 0.5);
   
+  --navbar-bg: rgba(11, 15, 25, 0.8);
+  --mockup-bg: rgba(17, 24, 39, 0.7);
+  --glass-bg: rgba(255, 255, 255, 0.04);
+  --input-bg: rgba(0, 0, 0, 0.2);
+  --input-bg-focus: rgba(0, 0, 0, 0.3);
+}
+
+[data-theme='light'] {
+  --bg-dark: #f8fafc;
+  --bg-panel: #ffffff;
+  --bg-panel-light: #f1f5f9;
+  --bg-panel-hover: #e2e8f0;
+  
+  --text-primary: #0f172a;
+  --text-secondary: #475569;
+  --text-muted: #64748b;
+  
+  --border-light: rgba(0, 0, 0, 0.1);
+  --border-strong: rgba(0, 0, 0, 0.2);
+  --shadow-sm: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+  --shadow-md: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+  --shadow-lg: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+  
+  --navbar-bg: rgba(255, 255, 255, 0.8);
+  --mockup-bg: rgba(248, 250, 252, 0.7);
+  --glass-bg: rgba(0, 0, 0, 0.03);
+  --input-bg: #ffffff;
+  --input-bg-focus: #f8fafc;
+}  
+
+:root {
   /* Spacing */
   --space-1: 0.25rem;
   --space-2: 0.5rem;
@@ -85,7 +116,7 @@ h1, h2, h3, h4, h5, h6 {
 
 /* Utility Classes */
 .glass-panel {
-  background: rgba(255, 255, 255, 0.04);
+  background: var(--glass-bg);
   border: 1px solid var(--border-light);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
@@ -122,7 +153,7 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 .btn-secondary {
-  background: rgba(255, 255, 255, 0.05);
+  background: var(--glass-bg);
   backdrop-filter: blur(8px);
   color: var(--text-primary);
   border: 1px solid var(--border-strong);
@@ -137,14 +168,14 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 .btn-secondary:hover {
-  background: rgba(255, 255, 255, 0.1);
+  background: var(--border-light);
   border-color: var(--text-muted);
 }
 
 /* Inputs */
 .input-field {
   width: 100%;
-  background: rgba(0, 0, 0, 0.2);
+  background: var(--input-bg);
   border: 1px solid var(--border-strong);
   color: var(--text-primary);
   padding: var(--space-2) var(--space-3);
@@ -158,7 +189,7 @@ h1, h2, h3, h4, h5, h6 {
 
 .input-field:focus {
   border-color: var(--accent-primary);
-  background: rgba(0, 0, 0, 0.3);
+  background: var(--input-bg-focus);
   box-shadow: 0 0 0 1px var(--accent-primary), inset 0 1px 2px rgba(0,0,0,0.2);
 }
 

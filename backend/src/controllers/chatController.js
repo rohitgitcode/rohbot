@@ -3,22 +3,24 @@ import Chat from '../models/Chat.js';
 import Bot from '../models/Bot.js';
 import { searchRelevantContext } from '../services/ragService.js';
 import { isGibberish } from '../utils/inputValidator.js';
+import { asyncHandler } from '../utils/asyncHandler.js';
+import { ApiError } from '../utils/ApiError.js';
 
 const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
 
 /**
- * Utility function to scrub any leaked reasoning blocks, internal logs, or thinking headers.
+ * Helper: Sanitizes reasoning tokens & preamble leaks from LLM responses
  */
 const sanitizeAiResponse = (rawReply) => {
   if (!rawReply || typeof rawReply !== 'string') return '';
 
   let cleaned = rawReply;
 
-  // 1. Remove XML/HTML style thinking or reasoning tags
+  // 1. Remove XML/HTML style thinking tags (<think>...</think>)
   cleaned = cleaned.replace(/<think>[\s\S]*?<\/think>/gi, '');
   cleaned = cleaned.replace(/<reasoning>[\s\S]*?<\/reasoning>/gi, '');
 
-  // 2. Strip explicit reasoning/planning keywords and preamble blocks
+  // 2. Strip explicit reasoning preamble blocks
   const reasoningKeywords = [
     'the user is asking',
     'i need to check',
@@ -54,102 +56,98 @@ const sanitizeAiResponse = (rawReply) => {
     }
   }
 
-  // 3. Remove remaining headers at the top
+  // 3. Remove thinking headers
   cleaned = cleaned.replace(/^(Thinking Process|Plan|Self-Correction|Chain of Thought):?\s*/gi, '');
 
   return cleaned.trim();
 };
 
-// 1. Send Message / Continue Chat (RAG-Enabled)
-export const sendMessage = async (req, res) => {
-  try {
-    const { message, chatId, botId } = req.body;
-    const userId = req.user._id; // Extracted from authMiddleware
+const isCasualGreeting = (text) => {
+  const cleanText = text.trim().toLowerCase().replace(/[^a-z0-9\s]/gi, '');
+  const greetings = ['hi', 'hello', 'hy', 'hey', 'good morning', 'good evening', 'how are you', 'sup', 'thanks', 'thank you'];
+  return greetings.includes(cleanText);
+};
 
-    if (!message) {
-      return res.status(400).json({ status: 'fail', message: 'Message is required' });
+// ==========================================
+// 1. Send Message / Continue Chat (RAG AI)
+// ==========================================
+export const sendMessage = asyncHandler(async (req, res) => {
+  const { message, chatId, botId } = req.body;
+  const userId = req.user._id;
+
+  // Validations
+  if (!message) {
+    throw new ApiError(400, 'Message is required');
+  }
+
+  if (message.length > 1000) {
+    throw new ApiError(400, 'Message too long. Please keep your question under 1000 characters.');
+  }
+
+  // Gibberish Filter (Graceful Handling)
+  if (isGibberish(message)) {
+    return res.status(200).json({
+      success: true,
+      reply: "It looks like your message didn't contain recognizable words. Please ask a clear question related to your uploaded documents!",
+      chatId: chatId || null
+    });
+  }
+
+  let chat;
+
+  // Check thread existence & user ownership
+  if (chatId) {
+    chat = await Chat.findOne({ _id: chatId, userId });
+    if (!chat) {
+      throw new ApiError(404, 'Chat thread not found or unauthorized access');
     }
+  } else {
+    chat = new Chat({
+      userId,
+      botId: botId || null,
+      title: message.length > 30 ? message.substring(0, 30) + '...' : message,
+      messages: [],
+    });
+  }
 
-    if (message.length > 1000) {
-      return res.status(400).json({ status: 'fail', message: 'Message too long. Please keep your question under 1000 characters.' });
+  const targetBotId = chat.botId || botId;
+
+  // Fetch custom bot instructions
+  let botInstruction = 'You are a helpful AI assistant.';
+  if (targetBotId) {
+    const bot = await Bot.findById(targetBotId);
+    if (bot && bot.systemPrompt) {
+      botInstruction = bot.systemPrompt;
     }
+  }
 
-    if (isGibberish(message)) {
-      return res.status(200).json({
-        status: 'success',
-        reply: "It looks like your message didn't contain recognizable words. Please ask a clear question related to your uploaded documents!",
-        chatId: chatId || null
-      });
-    }
+  // Retrieve vector context (Non-fatal try/catch for RAG fallback)
+  let retrievedContext = '';
+  if (targetBotId) {
+    try {
+      let retrievedChunks = await searchRelevantContext(message, targetBotId);
+      if (Array.isArray(retrievedChunks)) {
+        retrievedChunks = retrievedChunks.slice(0, 3);
+        retrievedContext = retrievedChunks
+          .map(c => typeof c === 'string' ? c : (c?.payload?.text || c?.text || ''))
+          .filter(Boolean)
+          .join('\n\n');
 
-    let chat;
-
-    // Check if continuing an existing thread or creating a new one
-    if (chatId) {
-      chat = await Chat.findOne({ _id: chatId, userId });
-      if (!chat) {
-        return res.status(404).json({ status: 'fail', message: 'Chat thread not found' });
-      }
-    } else {
-      // Create new chat session with an initial auto-generated title
-      chat = new Chat({
-        userId,
-        botId: botId || null,
-        title: message.length > 30 ? message.substring(0, 30) + '...' : message,
-        messages: [],
-      });
-    }
-
-    // Determine target botId strictly from the saved thread to retain session binding
-    const targetBotId = chat.botId || botId;
-
-    // Fetch custom bot instructions if available
-    let botInstruction = 'You are a helpful AI assistant.';
-    if (targetBotId) {
-      const bot = await Bot.findById(targetBotId);
-      if (bot && bot.systemPrompt) {
-        botInstruction = bot.systemPrompt;
-      }
-    }
-
-    // Retrieve vector context from Qdrant Cloud
-    let retrievedContext = '';
-    if (targetBotId) {
-      try {
-        let retrievedChunks = await searchRelevantContext(message, targetBotId);
-        
-        // Strict Context Chunk Cap (top 3 chunks)
-        if (Array.isArray(retrievedChunks)) {
-          retrievedChunks = retrievedChunks.slice(0, 3);
-          retrievedContext = retrievedChunks
-            .map(c => typeof c === 'string' ? c : (c?.payload?.text || c?.text || ''))
-            .filter(Boolean)
-            .join('\n\n');
-            
-          // Fallback truncation just in case
-          if (retrievedContext.length > 1500) {
-            retrievedContext = retrievedContext.substring(0, 1500) + '...';
-          }
+        if (retrievedContext.length > 1500) {
+          retrievedContext = retrievedContext.substring(0, 1500) + '...';
         }
-
-        console.log("🔍 RAG Query:", { botId: targetBotId, message, contextLength: retrievedContext.length });
-      } catch (ragErr) {
-        console.warn('⚠️ RAG Search Warning:', ragErr.message);
       }
+    } catch (ragErr) {
+      console.warn('⚠️ RAG Search Warning (Falling back to baseline LLM):', ragErr.message);
     }
+  }
 
-    const isCasualGreeting = (text) => {
-      const cleanText = text.trim().toLowerCase().replace(/[^a-z0-9\s]/gi, '');
-      const greetings = ['hi', 'hello', 'hy', 'hey', 'good morning', 'good evening', 'how are you', 'sup', 'thanks', 'thank you'];
-      return greetings.includes(cleanText);
-    };
+  const isGreeting = isCasualGreeting(message);
 
-    const isGreeting = isCasualGreeting(message);
-
-    // Construct full System Prompt with Knowledge Base Context and Strict Output Constraints
-    const systemPrompt = isGreeting
-      ? `${botInstruction}\n\nThe user is greeting you or making casual conversation. Respond politely, naturally, and concisely. Do not complain about missing documents.`
-      : `
+  // Build System Prompt
+  const systemPrompt = isGreeting
+    ? `${botInstruction}\n\nThe user is greeting you or making casual conversation. Respond politely, naturally, and concisely. Do not complain about missing documents.`
+    : `
 ${botInstruction}
 
 You are an advanced, intelligent AI Assistant. You have access to the "Relevant Knowledge Base Context" below.
@@ -165,116 +163,113 @@ CRITICAL OUTPUT & FORMATTING RULES:
 5. Be polite and professional.
 `.trim();
 
-    // Append user message to thread history
-    chat.messages.push({ role: 'user', content: message });
+  // Prepare history & call Groq API
+  chat.messages.push({ role: 'user', content: message });
 
-    // Prepare message payload starting with the System Prompt
-    const apiMessages = [
-      { role: 'system', content: systemPrompt },
-      ...chat.messages.map((m) => ({
-        role: m.role,
-        content: m.content,
-      })),
-    ];
+  const apiMessages = [
+    { role: 'system', content: systemPrompt },
+    ...chat.messages.map((m) => ({
+      role: m.role,
+      content: m.content,
+    })),
+  ];
 
-    // Call Groq API with better model
-    const chatCompletion = await groq.chat.completions.create({
-      messages: apiMessages,
-      model: 'llama-3.1-8b-instant',
-      max_tokens: 1500,
-    });
+  const chatCompletion = await groq.chat.completions.create({
+    messages: apiMessages,
+    model: 'llama-3.1-8b-instant',
+    max_tokens: 1500,
+  });
 
-    const rawAiResponse = chatCompletion.choices[0]?.message?.content || '';
-    const cleanedReply = sanitizeAiResponse(rawAiResponse);
+  const rawAiResponse = chatCompletion.choices[0]?.message?.content || '';
+  const cleanedReply = sanitizeAiResponse(rawAiResponse);
 
-    // Append cleaned AI response to thread history
-    chat.messages.push({ 
-      role: 'assistant', 
-      content: cleanedReply,
-      hasContext: !!retrievedContext
-    });
+  chat.messages.push({
+    role: 'assistant',
+    content: cleanedReply,
+    hasContext: !!retrievedContext
+  });
 
-    // Save updated conversation thread in MongoDB
-    await chat.save();
+  await chat.save();
 
-    res.status(200).json({
-      status: 'success',
-      chatId: chat._id,
-      reply: cleanedReply,
-      hasContext: !!retrievedContext,
-      chatHistory: chat.messages,
-    });
-  } catch (error) {
-    console.error('Groq Qwen Error:', error);
-    res.status(500).json({ status: 'error', message: 'Failed to generate AI response' });
+  return res.status(200).json({
+    success: true,
+    chatId: chat._id,
+    reply: cleanedReply,
+    hasContext: !!retrievedContext,
+    chatHistory: chat.messages,
+  });
+});
+
+// ==========================================
+// 2. Get All User Chats for Sidebar
+// ==========================================
+export const getUserChats = asyncHandler(async (req, res) => {
+  const { botId } = req.query;
+  if (!botId) {
+    throw new ApiError(400, 'botId query parameter is required for workspace isolation');
   }
-};
 
-// 2. Get All User Chats (For Sidebar List)
-export const getUserChats = async (req, res) => {
-  try {
-    const { botId } = req.query;
-    if (!botId) {
-      return res.status(400).json({ status: 'fail', message: 'botId query parameter is required for workspace isolation' });
-    }
+  const chats = await Chat.find({ userId: req.user._id, botId })
+    .select('title createdAt updatedAt botId')
+    .sort({ updatedAt: -1 });
 
-    const query = { userId: req.user._id, botId };
-    
-    const chats = await Chat.find(query)
-      .select('title createdAt updatedAt botId')
-      .sort({ updatedAt: -1 });
+  return res.status(200).json({
+    success: true,
+    results: chats.length,
+    data: { chats },
+  });
+});
 
-    res.status(200).json({ status: 'success', chats });
-  } catch (error) {
-    res.status(500).json({ status: 'error', message: error.message });
-  }
-};
-
+// ==========================================
 // 3. Get Specific Chat History by ID
-export const getChatById = async (req, res) => {
-  try {
-    const chat = await Chat.findOne({ _id: req.params.id, userId: req.user._id });
-    if (!chat) {
-      return res.status(404).json({ status: 'fail', message: 'Chat thread not found' });
-    }
-    res.status(200).json({ status: 'success', chat });
-  } catch (error) {
-    res.status(500).json({ status: 'error', message: error.message });
-  }
-};
+// ==========================================
+export const getChatById = asyncHandler(async (req, res) => {
+  const chat = await Chat.findOne({ _id: req.params.id, userId: req.user._id });
 
-// 4. Delete Chat Thread
-export const deleteChatThread = async (req, res) => {
-  try {
-    const chat = await Chat.findOneAndDelete({ _id: req.params.id, userId: req.user._id });
-    if (!chat) {
-      return res.status(404).json({ status: 'fail', message: 'Chat thread not found' });
-    }
-    res.status(200).json({ status: 'success', message: 'Thread deleted successfully' });
-  } catch (error) {
-    res.status(500).json({ status: 'error', message: error.message });
+  if (!chat) {
+    throw new ApiError(404, 'Chat thread not found or unauthorized access');
   }
-};
 
+  return res.status(200).json({
+    success: true,
+    data: { chat },
+  });
+});
+
+// ==========================================
+// 4. Delete Single Chat Thread
+// ==========================================
+export const deleteChatThread = asyncHandler(async (req, res) => {
+  const chat = await Chat.findOneAndDelete({ _id: req.params.id, userId: req.user._id });
+
+  if (!chat) {
+    throw new ApiError(404, 'Chat thread not found or unauthorized access');
+  }
+
+  return res.status(200).json({
+    success: true,
+    message: 'Thread deleted successfully',
+  });
+});
+
+// ==========================================
 // 5. Bulk Delete Chat Threads
-export const bulkDeleteChatThreads = async (req, res) => {
-  try {
-    const { threadIds } = req.body;
-    
-    if (!threadIds || !Array.isArray(threadIds)) {
-      return res.status(400).json({ status: 'fail', message: 'threadIds array is required' });
-    }
+// ==========================================
+export const bulkDeleteChatThreads = asyncHandler(async (req, res) => {
+  const { threadIds } = req.body;
 
-    const result = await Chat.deleteMany({ 
-      _id: { $in: threadIds }, 
-      userId: req.user._id 
-    });
-
-    res.status(200).json({ 
-      status: 'success', 
-      deletedCount: result.deletedCount 
-    });
-  } catch (error) {
-    res.status(500).json({ status: 'error', message: error.message });
+  if (!threadIds || !Array.isArray(threadIds)) {
+    throw new ApiError(400, 'threadIds array is required');
   }
-};
+
+  const result = await Chat.deleteMany({
+    _id: { $in: threadIds },
+    userId: req.user._id
+  });
+
+  return res.status(200).json({
+    success: true,
+    deletedCount: result.deletedCount,
+    message: `${result.deletedCount} threads deleted successfully`
+  });
+});

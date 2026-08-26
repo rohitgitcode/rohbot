@@ -2,103 +2,124 @@ import Groq from 'groq-sdk';
 import Bot from '../models/Bot.js';
 import { searchRelevantContext } from '../services/ragService.js';
 import { isGibberish } from '../utils/inputValidator.js';
+import { asyncHandler } from '../utils/asyncHandler.js';
+import { ApiError } from '../utils/ApiError.js';
 
 const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
 
+/**
+ * Utility function to scrub any leaked reasoning blocks, internal logs, or thinking headers.
+ */
 const sanitizeAiResponse = (rawReply) => {
-  if (!rawReply || typeof rawReply !== 'string') return '';
-  let cleaned = rawReply;
-  cleaned = cleaned.replace(/<think>[\s\S]*?<\/think>/gi, '');
-  cleaned = cleaned.replace(/<reasoning>[\s\S]*?<\/reasoning>/gi, '');
-  
-  const reasoningKeywords = [
-    'the user is asking',
-    'i need to check',
-    'the context lists sections',
-    'therefore, i must follow',
-    'plan:',
-    'i must strictly follow'
-  ];
-  const lowerCleaned = cleaned.toLowerCase();
-  const hasReasoningLeak = reasoningKeywords.some(keyword => lowerCleaned.includes(keyword));
-  
-  if (hasReasoningLeak) {
-    const lines = cleaned.split('\n');
-    const answerStartIndex = lines.findIndex(line => {
-      const trimmed = line.trim();
-      return (
-        trimmed.startsWith('Based on') ||
-        trimmed.startsWith('According to') ||
-        trimmed.startsWith('Here') ||
-        trimmed.startsWith('The provided') ||
-        trimmed.startsWith('Section') ||
-        trimmed.startsWith('Chapter') ||
-        trimmed.startsWith('1.') ||
-        trimmed.startsWith('#') ||
-        trimmed.startsWith('*') ||
-        trimmed.startsWith('-')
-      );
-    });
-    if (answerStartIndex !== -1) {
-      cleaned = lines.slice(answerStartIndex).join('\n');
+    if (!rawReply || typeof rawReply !== 'string') return '';
+    let cleaned = rawReply;
+    
+    // 1. Remove XML/HTML style thinking tags
+    cleaned = cleaned.replace(/<think>[\s\S]*?<\/think>/gi, '');
+    cleaned = cleaned.replace(/<reasoning>[\s\S]*?<\/reasoning>/gi, '');
+
+    // 2. Strip explicit reasoning/planning keywords and preamble blocks
+    const reasoningKeywords = [
+        'the user is asking',
+        'i need to check',
+        'the context lists sections',
+        'therefore, i must follow',
+        'plan:',
+        'i must strictly follow'
+    ];
+    const lowerCleaned = cleaned.toLowerCase();
+    const hasReasoningLeak = reasoningKeywords.some(keyword => lowerCleaned.includes(keyword));
+
+    if (hasReasoningLeak) {
+        const lines = cleaned.split('\n');
+        const answerStartIndex = lines.findIndex(line => {
+            const trimmed = line.trim();
+            return (
+                trimmed.startsWith('Based on') ||
+                trimmed.startsWith('According to') ||
+                trimmed.startsWith('Here') ||
+                trimmed.startsWith('The provided') ||
+                trimmed.startsWith('Section') ||
+                trimmed.startsWith('Chapter') ||
+                trimmed.startsWith('1.') ||
+                trimmed.startsWith('#') ||
+                trimmed.startsWith('*') ||
+                trimmed.startsWith('-')
+            );
+        });
+        if (answerStartIndex !== -1) {
+            cleaned = lines.slice(answerStartIndex).join('\n');
+        }
     }
-  }
-  
-  cleaned = cleaned.replace(/^(Thinking Process|Plan|Self-Correction|Chain of Thought):?\s*/gi, '');
-  return cleaned.trim();
+
+    // 3. Remove remaining headers at the top
+    cleaned = cleaned.replace(/^(Thinking Process|Plan|Self-Correction|Chain of Thought):?\s*/gi, '');
+    return cleaned.trim();
 };
 
-export const publicChat = async (req, res) => {
-  try {
+// ============================================================
+// Public Chat API (For Embedded Website Widgets)
+// ============================================================
+export const publicChat = asyncHandler(async (req, res) => {
     const { botId, message, sessionId, history = [] } = req.body;
 
+    // 1. Request Validations
     if (!botId) {
-      return res.status(400).json({ status: 'fail', message: 'botId is required for public chat' });
+        throw new ApiError(400, 'botId is required for public chat');
     }
-    
+
     if (!message) {
-      return res.status(400).json({ status: 'fail', message: 'Message is required' });
+        throw new ApiError(400, 'Message is required');
     }
 
     if (message.length > 1000) {
-      return res.status(400).json({ status: 'fail', message: 'Message too long. Please keep your question under 1000 characters.' });
+        throw new ApiError(400, 'Message too long. Please keep your question under 1000 characters.');
     }
 
+    // 2. Gibberish Detection (Graceful UI Response)
     if (isGibberish(message)) {
-      return res.status(200).json({
-        status: 'success',
-        reply: "It looks like your message didn't contain recognizable words. Please ask a clear question related to our knowledge base!",
-        sessionId
-      });
+        return res.status(200).json({
+            success: true,
+            reply: "It looks like your message didn't contain recognizable words. Please ask a clear question related to our knowledge base!",
+            sessionId: sessionId || `session_${Date.now()}`
+        });
     }
 
+    // 3. Bot Existence & Status Check
     const bot = await Bot.findById(botId);
     if (!bot) {
-      return res.status(404).json({ status: 'fail', message: 'Widget bot not found or inactive' });
+        throw new ApiError(404, 'Widget bot not found or inactive');
     }
 
     if (!bot.isActive) {
-      return res.status(403).json({ status: 'fail', message: 'This widget has been disabled.' });
+        throw new ApiError(403, 'This widget has been disabled by the owner.');
     }
 
-    // Attempt to RAG search
+    // 4. Greeting Check & Context Retrieval (RAG)
     const isGreeting = /^(hi|hello|hey|good morning|good afternoon|good evening|howdy)[\s\p{P}]*$/i.test(message.trim());
     let retrievedContext = '';
-    
+
     if (!isGreeting) {
-      const results = await searchRelevantContext(message, botId);
-      retrievedContext = results
-        .map(c => typeof c === 'string' ? c : (c?.payload?.text || c?.text || ''))
-        .filter(Boolean)
-        .map((r, i) => `Excerpt ${i + 1}:\n${r}`)
-        .join('\n\n');
+        try {
+            const results = await searchRelevantContext(message, botId);
+            if (Array.isArray(results)) {
+                retrievedContext = results
+                    .map(c => typeof c === 'string' ? c : (c?.payload?.text || c?.text || ''))
+                    .filter(Boolean)
+                    .map((r, i) => `Excerpt ${i + 1}:\n${r}`)
+                    .join('\n\n');
+            }
+        } catch (ragErr) {
+            console.warn('⚠️ Public Widget RAG Warning:', ragErr.message);
+        }
     }
 
     const botInstruction = bot.systemPrompt || 'You are a helpful assistant.';
-    
+
+    // 5. Build Guardrailed System Prompt
     const systemPrompt = isGreeting
-      ? `${botInstruction}\n\nThe user is greeting you or making casual conversation. Respond politely, naturally, and concisely. Do not complain about missing documents.`
-      : `
+        ? `${botInstruction}\n\nThe user is greeting you or making casual conversation. Respond politely, naturally, and concisely. Do not complain about missing documents.`
+        : `
 ${botInstruction}
 
 You are a strict Document Grounded Assistant. Your primary knowledge base is provided in the "Relevant Knowledge Base Context" block below.
@@ -123,48 +144,44 @@ CRITICAL OUTPUT & FORMATTING RULES:
 `.trim();
 
     const apiMessages = [
-      { role: 'system', content: systemPrompt }
+        { role: 'system', content: systemPrompt }
     ];
 
-    // Append context history (last few messages) to maintain conversation state
+    // 6. Append context history to retain conversational state
     if (Array.isArray(history)) {
-      history.forEach(msg => {
-        if (msg.role === 'user' || msg.role === 'bot' || msg.role === 'assistant') {
-          apiMessages.push({
-            role: msg.role === 'bot' ? 'assistant' : msg.role,
-            content: msg.content
-          });
-        }
-      });
+        history.forEach(msg => {
+            if (msg.role === 'user' || msg.role === 'bot' || msg.role === 'assistant') {
+                apiMessages.push({
+                    role: msg.role === 'bot' ? 'assistant' : msg.role,
+                    content: msg.content
+                });
+            }
+        });
     }
 
-    // Append the latest user message
+    // Append current user message
     apiMessages.push({ role: 'user', content: message });
 
+    // 7. Invoke Groq LLM
     const chatCompletion = await groq.chat.completions.create({
-      messages: apiMessages,
-      model: 'qwen/qwen3.6-27b',
-      max_tokens: 800,
-      reasoning_format: 'hidden',
+        messages: apiMessages,
+        model: 'qwen/qwen3.6-27b',
+        max_tokens: 800,
+        reasoning_format: 'hidden',
     });
 
     const rawAiResponse = chatCompletion.choices[0]?.message?.content || '';
     const cleanedReply = sanitizeAiResponse(rawAiResponse);
 
-    // Update bot usage stats (simplified)
+    // 8. Track Message Usage Atomically
     await Bot.findByIdAndUpdate(botId, {
-      $inc: { 'usage.messageCount': 1 }
+        $inc: { 'usage.messageCount': 1 }
     });
 
-    res.status(200).json({
-      status: 'success',
-      reply: cleanedReply,
-      hasContext: !!retrievedContext,
-      sessionId: sessionId || `session_${Date.now()}`
+    return res.status(200).json({
+        success: true,
+        reply: cleanedReply,
+        hasContext: !!retrievedContext,
+        sessionId: sessionId || `session_${Date.now()}`
     });
-
-  } catch (error) {
-    console.error('Widget Chat Error:', error);
-    res.status(500).json({ status: 'error', message: 'Internal Server Error' });
-  }
-};
+});

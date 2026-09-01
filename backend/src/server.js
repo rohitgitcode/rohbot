@@ -27,6 +27,9 @@ initQdrantCollection();
 const app = express();
 const PORT = process.env.PORT || 5000;
 
+// Enable trust proxy for Render and reverse proxies (Fixes Rate Limit / IP verification)
+app.set('trust proxy', 1);
+
 // Setup __dirname for ES Modules
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -45,6 +48,7 @@ const globalLimiter = rateLimit({
     message: { success: false, message: 'Too many requests, please try again later.' },
     standardHeaders: true,
     legacyHeaders: false,
+    validate: { xForwardedForHeader: false },
 });
 app.use('/api/', globalLimiter);
 

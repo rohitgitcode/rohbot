@@ -176,7 +176,7 @@ CRITICAL OUTPUT & FORMATTING RULES:
 
   const chatCompletion = await groq.chat.completions.create({
     messages: apiMessages,
-    model: 'llama-3.1-8b-instant',
+    model: 'qwen/qwen3.6-27b',
     max_tokens: 1500,
   });
 

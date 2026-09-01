@@ -8,7 +8,7 @@ const generateToken = (userId) => {
   }
 
   return jwt.sign(
-    { id: userId },
+    { id: userId.toString(), userId: userId.toString() },
     process.env.JWT_SECRET,
     { expiresIn: '7d' }
   );
@@ -16,10 +16,11 @@ const generateToken = (userId) => {
 
 const sanitizeUser = (user) => {
   return {
-    id: user._id,
+    _id: user._id.toString(),
+    id: user._id.toString(),
     name: user.name,
     email: user.email,
-    role: user.role,
+    role: user.role || 'user',
   };
 };
 
@@ -85,4 +86,3 @@ export const loginUser = async ({ email, password }) => {
     user: sanitizeUser(user),
   };
 };
-

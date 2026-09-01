@@ -37,16 +37,16 @@ export const useChatStore = defineStore('chat', () => {
   // State
   const token = ref<string>(localStorage.getItem('rohbot_token') || '')
   const isAuthenticated = computed(() => !!token.value)
-  
+
   const bots = ref<Bot[]>([])
   const activeBotId = ref<string>('')
-  
+
   const documents = ref<KBDocument[]>([])
 
   const chatHistory = ref<ChatThread[]>([])
   const currentChatId = ref<string | null>(null)
   const currentMessages = ref<ChatMessage[]>([])
-  
+
   const isLoading = ref<boolean>(false)
 
   // Actions
@@ -58,7 +58,7 @@ export const useChatStore = defineStore('chat', () => {
       localStorage.removeItem('rohbot_token')
     }
   }
-  
+
   const logout = () => {
     setToken('')
     chatHistory.value = []
@@ -101,7 +101,7 @@ export const useChatStore = defineStore('chat', () => {
     try {
       const res = await fetch(`${API_BASE}/api/bots`, {
         method: 'POST',
-        headers: { 
+        headers: {
           'Authorization': `Bearer ${token.value}`,
           'Content-Type': 'application/json'
         },
@@ -155,7 +155,7 @@ export const useChatStore = defineStore('chat', () => {
       console.error('Failed to fetch chat history:', e)
     }
   }
-  
+
   const switchWorkspace = async (botId: string) => {
     activeBotId.value = botId
     currentChatId.value = null
@@ -190,10 +190,10 @@ export const useChatStore = defineStore('chat', () => {
 
   const sendMessage = async (message: string) => {
     if (!isAuthenticated.value || !message.trim()) return
-    
+
     const userMsg: ChatMessage = { role: 'user', content: message }
     currentMessages.value.push(userMsg)
-    
+
     // Add temporary loading assistant message
     const botMsgId = Date.now().toString()
     currentMessages.value.push({ id: botMsgId, role: 'assistant', content: '...' })
@@ -210,9 +210,9 @@ export const useChatStore = defineStore('chat', () => {
 
       const res = await fetch(`${API_BASE}/api/chat/message`, {
         method: 'POST',
-        headers: { 
+        headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token.value}` 
+          'Authorization': `Bearer ${token.value}`
         },
         body: JSON.stringify(payload)
       })
@@ -230,7 +230,7 @@ export const useChatStore = defineStore('chat', () => {
           currentChatId.value = data.chatId
           await fetchChatHistory() // Refresh history
         }
-        
+
         // Replace loading message with actual response
         const idx = currentMessages.value.findIndex(m => m.id === botMsgId)
         if (idx !== -1) {
@@ -265,7 +265,7 @@ export const useChatStore = defineStore('chat', () => {
       const formData = new FormData()
       formData.append('file', file)
       formData.append('botId', botId)
-      
+
       const res = await fetch(`${API_BASE}/api/documents/upload`, {
         method: 'POST',
         headers: {
@@ -273,12 +273,12 @@ export const useChatStore = defineStore('chat', () => {
         },
         body: formData
       })
-      
+
       if (res.status === 401) {
         logout()
         return false
       }
-      
+
       const success = res.status === 201 || res.ok
       if (success) {
         await fetchDocuments(botId)
@@ -301,12 +301,12 @@ export const useChatStore = defineStore('chat', () => {
         },
         body: JSON.stringify({ url, botId })
       })
-      
+
       if (res.status === 401) {
         logout()
         return false
       }
-      
+
       const success = res.status === 201 || res.ok
       if (success) {
         await fetchDocuments(botId)
@@ -383,7 +383,7 @@ export const useChatStore = defineStore('chat', () => {
     } catch (e) {
       console.error('Failed to bulk delete threads:', e)
     }
-    return false
+    return false 
   }
 
   const deleteBot = async (botId: string) => {

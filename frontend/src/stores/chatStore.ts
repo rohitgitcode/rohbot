@@ -1,14 +1,16 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 
-const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000'
+const API_BASE = import.meta.env.VITE_API_URL || import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000'
 
 export interface Bot {
   _id: string
   name: string
+  systemPrompt?: string
 }
 
 export interface ChatMessage {
+  _id?: string
   id?: string
   role: 'user' | 'assistant'
   content: string
@@ -74,13 +76,13 @@ export const useChatStore = defineStore('chat', () => {
       })
       if (res.ok) {
         const payload = await res.json()
-        const fetchedBots = payload.data?.bots || []
+        const fetchedBots: Bot[] = payload.data?.bots || []
         if (fetchedBots.length > 0) {
           bots.value = fetchedBots
-          const firstBot = bots.value[0]
-          if (firstBot && !bots.value.find(b => b._id === activeBotId.value)) {
+          const firstBot = fetchedBots[0]
+          if (firstBot && !fetchedBots.find(b => b._id === activeBotId.value)) {
             switchWorkspace(firstBot._id)
-          } else {
+          } else if (activeBotId.value) {
             fetchDocuments(activeBotId.value)
             fetchChatHistory(activeBotId.value)
           }
@@ -96,7 +98,7 @@ export const useChatStore = defineStore('chat', () => {
     }
   }
 
-  const createBot = async (payload: { name: string, systemPrompt: string }) => {
+  const createBot = async (payload: { name: string; systemPrompt: string }) => {
     if (!isAuthenticated.value) return null
     try {
       const res = await fetch(`${API_BASE}/api/bots`, {
@@ -108,12 +110,12 @@ export const useChatStore = defineStore('chat', () => {
         body: JSON.stringify(payload)
       })
       if (res.ok) {
-        const payload = await res.json()
-        const newBot = payload.data?.bot
+        const data = await res.json()
+        const newBot = data.data?.bot
         if (newBot && newBot._id) {
-          bots.value.unshift(newBot) // IMMEDIATELY push the new bot
-          switchWorkspace(newBot._id)   // Sets it as active workspace and triggers fetches
-          return newBot._id
+          bots.value.unshift(newBot)
+          switchWorkspace(newBot._id)
+          return newBot._id as string
         }
         return null
       }
@@ -159,9 +161,9 @@ export const useChatStore = defineStore('chat', () => {
   const switchWorkspace = async (botId: string) => {
     activeBotId.value = botId
     currentChatId.value = null
-    currentMessages.value = [] // INSTANTLY clear current main chat window
+    currentMessages.value = []
     await fetchDocuments(botId)
-    await fetchChatHistory(botId) // Re-fetch threads strictly for THIS workspace
+    await fetchChatHistory(botId)
   }
 
   const startNewChat = () => {
@@ -194,7 +196,6 @@ export const useChatStore = defineStore('chat', () => {
     const userMsg: ChatMessage = { role: 'user', content: message }
     currentMessages.value.push(userMsg)
 
-    // Add temporary loading assistant message
     const botMsgId = Date.now().toString()
     currentMessages.value.push({ id: botMsgId, role: 'assistant', content: '...' })
     isLoading.value = true
@@ -217,7 +218,6 @@ export const useChatStore = defineStore('chat', () => {
         body: JSON.stringify(payload)
       })
 
-      // Intercept 401
       if (res.status === 401) {
         logout()
         return
@@ -225,15 +225,13 @@ export const useChatStore = defineStore('chat', () => {
 
       if (res.ok) {
         const data = await res.json()
-        // Update the current chat ID if this was a new chat
         if (!currentChatId.value && data.chatId) {
           currentChatId.value = data.chatId
-          await fetchChatHistory() // Refresh history
+          await fetchChatHistory()
         }
 
-        // Replace loading message with actual response
         const idx = currentMessages.value.findIndex(m => m.id === botMsgId)
-        if (idx !== -1) {
+        if (idx !== -1 && currentMessages.value[idx]) {
           currentMessages.value[idx] = {
             id: botMsgId,
             role: 'assistant',
@@ -247,11 +245,11 @@ export const useChatStore = defineStore('chat', () => {
     } catch (e) {
       console.error('Failed to send message:', e)
       const idx = currentMessages.value.findIndex(m => m.id === botMsgId)
-      if (idx !== -1) {
-        const msg = currentMessages.value[idx]
-        if (msg) {
-          msg.content = 'No response received — try rephrasing or resending your message'
-          msg.isError = true
+      if (idx !== -1 && currentMessages.value[idx]) {
+        const targetMsg = currentMessages.value[idx]
+        if (targetMsg) {
+          targetMsg.content = 'No response received — try rephrasing or resending your message'
+          targetMsg.isError = true
         }
       }
     } finally {
@@ -311,8 +309,8 @@ export const useChatStore = defineStore('chat', () => {
       if (success) {
         await fetchDocuments(botId)
       } else {
-        const err = await res.json()
-        console.error('Ingest URL failed:', err.message)
+        const err = await res.json().catch(() => ({}))
+        console.error('Ingest URL failed:', err?.message || 'Unknown error')
       }
       return success
     } catch (e) {
@@ -383,7 +381,7 @@ export const useChatStore = defineStore('chat', () => {
     } catch (e) {
       console.error('Failed to bulk delete threads:', e)
     }
-    return false 
+    return false
   }
 
   const deleteBot = async (botId: string) => {
@@ -398,8 +396,9 @@ export const useChatStore = defineStore('chat', () => {
       if (res.ok) {
         bots.value = bots.value.filter(b => b._id !== botId)
         if (activeBotId.value === botId) {
-          if (bots.value.length > 0) {
-            switchWorkspace(bots.value[0]._id)
+          const firstBot = bots.value[0]
+          if (firstBot) {
+            switchWorkspace(firstBot._id)
           } else {
             activeBotId.value = ''
             chatHistory.value = []

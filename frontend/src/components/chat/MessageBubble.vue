@@ -12,16 +12,16 @@ const isUser = computed(() => props.message.role === 'user')
 const isError = computed(() => props.message.isError)
 
 const formattedContent = computed(() => {
-  let content = props.message.content
-  
+  let content = props.message.content || ''
+
   if (content === '...') {
     return '<span class="typing-indicator">Generating response</span>'
   }
-  
+
   if (isError.value) {
-    return content // don't parse markdown for error msg
+    return content
   }
-  
+
   content = content.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
   content = content.replace(/```([\s\S]*?)```/g, '<pre><code>$1</code></pre>')
   content = content.replace(/`([^`]+)`/g, '<code>$1</code>')
@@ -32,25 +32,28 @@ const formattedContent = computed(() => {
 
 const showCopyTooltip = ref(false)
 const showAddTooltip = ref(false)
-const showRetryTooltip = ref(false)
 
 const copyMessage = () => {
-  navigator.clipboard.writeText(props.message.content)
+  navigator.clipboard.writeText(props.message.content || '')
   showCopyTooltip.value = true
   setTimeout(() => showCopyTooltip.value = false, 2000)
 }
 
 const retryMessage = () => {
-  // Find the last user message and resend it
   const messages = chatStore.currentMessages
-  const idx = messages.findIndex(m => m.id === props.message.id)
+  const msgId = (props.message as any)?._id || props.message?.id
+  const idx = messages.findIndex(m => ((m as any)?._id || m?.id) === msgId)
+
   let lastUserMsg = ''
-  for (let i = idx - 1; i >= 0; i--) {
-    if (messages[i].role === 'user') {
-      lastUserMsg = messages[i].content
+  const searchStart = idx >= 0 ? idx - 1 : messages.length - 1
+  for (let i = searchStart; i >= 0; i--) {
+    const current = messages[i]
+    if (current && current.role === 'user' && current.content) {
+      lastUserMsg = current.content
       break
     }
   }
+
   if (lastUserMsg) {
     chatStore.sendMessage(lastUserMsg)
   }
@@ -62,11 +65,9 @@ const retryMessage = () => {
     <!-- Avatar -->
     <div class="message-avatar" :class="{ 'ai-avatar': !isUser, 'user-avatar': isUser }">
       <template v-if="isUser">
-        <!-- Colored circular monogram for User -->
         <span class="user-monogram">D</span>
       </template>
       <template v-else>
-        <!-- Custom Brand Monogram -->
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
           <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
           <path d="M12 8v8"></path>
@@ -85,7 +86,7 @@ const retryMessage = () => {
             <line x1="12" y1="16" x2="12.01" y2="16"></line>
           </svg>
           <div class="bubble-inner" v-html="formattedContent"></div>
-          
+
           <button v-if="isError" @click="retryMessage" class="inline-retry-btn" title="Retry">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <polyline points="23 4 23 10 17 10"></polyline>
@@ -93,7 +94,7 @@ const retryMessage = () => {
             </svg>
           </button>
         </div>
-        
+
         <!-- RAG Badge indicator -->
         <div v-if="message.hasContext && !isError" class="rag-badge fade-in">
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
@@ -102,7 +103,7 @@ const retryMessage = () => {
           ✨ Grounded with KB
         </div>
       </div>
-      
+
       <!-- Actions Toolbar -->
       <div class="message-actions" v-if="!isUser && message.content !== '...' && !isError">
         <div class="action-toolbar">
@@ -115,9 +116,9 @@ const retryMessage = () => {
             </button>
             <span class="tooltip" :class="{ 'show': showCopyTooltip }">Copy</span>
           </div>
-          
+
           <div class="toolbar-divider"></div>
-          
+
           <div class="action-group">
             <button class="action-btn" @mouseenter="showAddTooltip = true" @mouseleave="showAddTooltip = false">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -170,7 +171,7 @@ const retryMessage = () => {
   background: var(--bg-panel);
   border: 1px solid var(--border-strong);
   color: var(--text-primary);
-  border-radius: 8px; /* Slight square for AI vs circle for User */
+  border-radius: 8px;
 }
 
 .message-content {

@@ -32,8 +32,8 @@ const handleDragLeave = () => {
 const handleDrop = (e: DragEvent) => {
   e.preventDefault()
   isDragging.value = false
-  if (e.dataTransfer?.files && e.dataTransfer.files.length > 0) {
-    const file = e.dataTransfer.files[0]
+  const file = e.dataTransfer?.files?.[0]
+  if (file) {
     if (file.type === 'application/pdf' || file.name.endsWith('.pdf')) {
       selectedFile.value = file
     } else {
@@ -44,27 +44,28 @@ const handleDrop = (e: DragEvent) => {
 
 const handleFileSelect = (e: Event) => {
   const target = e.target as HTMLInputElement
-  if (target.files && target.files.length > 0) {
-    selectedFile.value = target.files[0]
+  const file = target.files?.[0]
+  if (file) {
+    selectedFile.value = file
   }
 }
 
 const handleCreate = async () => {
   errorMsg.value = ''
-  
+
   if (!botName.value.trim()) {
     errorMsg.value = 'Workspace Name is required.'
     return
   }
 
   isCreating.value = true
-  
+
   try {
     const newBotId = await chatStore.createBot({
       name: botName.value.trim(),
       systemPrompt: systemPrompt.value.trim()
     })
-    
+
     if (newBotId) {
       if (selectedFile.value) {
         isCreating.value = true
@@ -75,7 +76,7 @@ const handleCreate = async () => {
           return // Don't close modal if upload failed, so user can see it
         }
       }
-      
+
       // Success reset
       botName.value = ''
       systemPrompt.value = ''
@@ -105,25 +106,25 @@ const handleCreate = async () => {
             </svg>
           </button>
         </div>
-        
+
         <div class="modal-body">
           <p class="description">Configure a new AI workspace with custom instructions.</p>
-          
+
           <div class="form-group">
             <label>Workspace Name</label>
-            <input 
-              v-model="botName" 
-              type="text" 
-              class="input-field" 
+            <input
+              v-model="botName"
+              type="text"
+              class="input-field"
               placeholder="e.g. Finance Assistant"
             />
           </div>
-          
+
           <div class="form-group">
             <label>System Prompt <span class="optional">(Optional)</span></label>
-            <textarea 
-              v-model="systemPrompt" 
-              class="input-field textarea-field" 
+            <textarea
+              v-model="systemPrompt"
+              class="input-field textarea-field"
               placeholder="Instruct the AI on how it should behave..."
               rows="3"
             ></textarea>
@@ -132,7 +133,7 @@ const handleCreate = async () => {
           <!-- Dropzone -->
           <div class="form-group">
             <label>Initial Knowledge Base <span class="optional">(Optional)</span></label>
-            <div 
+            <div
               class="dropzone"
               :class="{ 'is-dragging': isDragging, 'has-file': selectedFile }"
               @dragover="handleDragOver"
@@ -140,18 +141,18 @@ const handleCreate = async () => {
               @drop="handleDrop"
               @click="!selectedFile && fileInput?.click()"
             >
-              <input 
-                type="file" 
-                ref="fileInput" 
-                accept="application/pdf" 
+              <input
+                type="file"
+                ref="fileInput"
+                accept="application/pdf"
                 class="hidden-input"
                 @change="handleFileSelect"
               />
-              
+
               <template v-if="!selectedFile">
                 <p>Drag & drop a PDF here or click to browse</p>
               </template>
-              
+
               <template v-else>
                 <div class="file-info">
                   <span class="filename">{{ selectedFile.name }}</span>

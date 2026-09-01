@@ -10,7 +10,7 @@ const emit = defineEmits<{
 }>()
 
 const activeBotName = computed(() => {
-  const bot = chatStore.bots.find(b => b.id === chatStore.activeBotId)
+  const bot = chatStore.bots.find(b => (b as any)._id === chatStore.activeBotId || (b as any).id === chatStore.activeBotId)
   return bot ? bot.name : 'Custom Workspace'
 })
 
@@ -78,7 +78,7 @@ watch(() => chatStore.currentMessages.length, () => {
           </span>
         </div>
       </div>
-      
+
       <div class="header-actions">
         <button @click="$emit('openEmbed')" class="btn-secondary embed-btn" style="margin-right: 8px;">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -120,10 +120,10 @@ watch(() => chatStore.currentMessages.length, () => {
       </div>
       
       <div class="messages-list">
-        <MessageBubble 
-          v-for="(msg, idx) in chatStore.currentMessages" 
-          :key="msg.id || idx" 
-          :message="msg" 
+        <MessageBubble
+          v-for="(msg, idx) in chatStore.currentMessages"
+          :key="(msg as any)._id || (msg as any).id || idx"
+          :message="msg"
         />
       </div>
     </div>
@@ -136,8 +136,8 @@ watch(() => chatStore.currentMessages.length, () => {
             <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"></path>
           </svg>
         </button>
-        
-        <textarea 
+
+        <textarea
           ref="textareaRef"
           v-model="messageInput"
           placeholder="Message RohBot..."
@@ -147,9 +147,9 @@ watch(() => chatStore.currentMessages.length, () => {
           rows="1"
           :disabled="chatStore.isLoading"
         ></textarea>
-        
-        <button 
-          class="send-btn" 
+
+        <button
+          class="send-btn"
           :class="{ 'is-active': messageInput.trim() && !chatStore.isLoading }"
           @click="sendMessage"
           :disabled="!messageInput.trim() || chatStore.isLoading"

@@ -1,9 +1,34 @@
 <script setup lang="ts">
+import { ref } from 'vue'
 import ThemeToggle from '../ui/ThemeToggle.vue'
+import InfoModal, { type InfoModalTab } from '../ui/InfoModal.vue'
 
 const emit = defineEmits<{
   (e: 'open-login', isLogin: boolean): void
 }>()
+
+const isInfoModalOpen = ref(false)
+const infoModalTab = ref<InfoModalTab>('pricing')
+
+const openInfoModal = (tab: InfoModalTab) => {
+  infoModalTab.value = tab
+  isInfoModalOpen.value = true
+}
+
+const scrollToFeatures = () => {
+  isInfoModalOpen.value = false
+  const el = document.getElementById('features')
+  if (el) {
+    el.scrollIntoView({ behavior: 'smooth' })
+  }
+}
+
+const scrollToTop = () => {
+  const container = document.querySelector('.homepage-container')
+  if (container) {
+    container.scrollTo({ top: 0, behavior: 'smooth' })
+  }
+}
 </script>
 
 <template>
@@ -11,7 +36,7 @@ const emit = defineEmits<{
     <!-- Navbar -->
     <nav class="navbar">
       <div class="nav-container">
-        <div class="logo">
+        <div class="logo" @click="scrollToTop">
           <div class="brand-icon">
             <svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
               <rect width="32" height="32" rx="8" fill="url(#logo-grad)" />
@@ -29,7 +54,7 @@ const emit = defineEmits<{
         </div>
         
         <div class="nav-links">
-          <a href="#features">Features</a>
+          <a href="#features" @click.prevent="scrollToFeatures">Features</a>
           <a href="#how-it-works">How it Works</a>
         </div>
         
@@ -143,7 +168,7 @@ const emit = defineEmits<{
     <footer class="footer">
       <div class="footer-content">
         <div class="footer-brand">
-          <div class="logo">
+          <div class="logo" @click="scrollToTop">
             <div class="brand-icon new-brand-icon">
               <svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
                 <rect width="32" height="32" rx="8" fill="url(#logo-grad-footer)" />
@@ -164,20 +189,23 @@ const emit = defineEmits<{
         <div class="footer-links">
           <div class="link-group">
             <h4>Product</h4>
-            <a href="#">Features</a>
-            <a href="#">Integrations</a>
-            <a href="#">Pricing</a>
+            <a href="#features" @click.prevent="scrollToFeatures">Features</a>
+            <a href="#integrations" @click.prevent="openInfoModal('integrations')">Integrations</a>
+            <a href="#pricing" @click.prevent="openInfoModal('pricing')">Pricing</a>
           </div>
           <div class="link-group">
             <h4>Company</h4>
-            <a href="#">About</a>
-            <a href="#">Blog</a>
-            <a href="#">Contact</a>
+            <a href="#about" @click.prevent="openInfoModal('about')">About</a>
+            <a href="#careers" @click.prevent="openInfoModal('careers')" class="careers-link">
+              Careers <span class="footer-badge">Hiring</span>
+            </a>
+            <a href="#blog" @click.prevent="openInfoModal('blog')">Blog</a>
+            <a href="#contact" @click.prevent="openInfoModal('contact')">Contact</a>
           </div>
           <div class="link-group">
             <h4>Legal</h4>
-            <a href="#">Privacy Policy</a>
-            <a href="#">Terms of Service</a>
+            <a href="#privacy" @click.prevent="openInfoModal('privacy')">Privacy Policy</a>
+            <a href="#terms" @click.prevent="openInfoModal('terms')">Terms of Service</a>
           </div>
         </div>
       </div>
@@ -185,6 +213,15 @@ const emit = defineEmits<{
         <p>&copy; 2026 RohBot AI. All rights reserved.</p>
       </div>
     </footer>
+
+    <!-- Interactive Info Modal -->
+    <InfoModal 
+      :is-open="isInfoModalOpen"
+      :initial-tab="infoModalTab"
+      @close="isInfoModalOpen = false"
+      @open-login="emit('open-login', $event)"
+      @scroll-to-features="scrollToFeatures"
+    />
   </div>
 </template>
 
@@ -596,11 +633,29 @@ const emit = defineEmits<{
   text-decoration: none;
   margin-bottom: var(--space-2);
   font-size: 0.9rem;
+  cursor: pointer;
   transition: color var(--transition-fast);
 }
 
 .link-group a:hover {
   color: var(--accent-primary);
+}
+
+.careers-link {
+  display: flex !important;
+  align-items: center;
+  gap: 6px;
+}
+
+.footer-badge {
+  background: rgba(34, 197, 94, 0.15);
+  color: #22c55e;
+  border: 1px solid rgba(34, 197, 94, 0.3);
+  border-radius: 10px;
+  padding: 1px 6px;
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.3px;
 }
 
 .footer-bottom {

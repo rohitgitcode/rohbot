@@ -25,6 +25,10 @@ const userSchema = new mongoose.Schema(
       enum: ['user', 'admin'],
       default: 'user',
     },
+    hasCompletedTour: {
+      type: Boolean,
+      default: false,
+    },
   },
   { timestamps: true }
 );

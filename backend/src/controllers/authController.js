@@ -1,4 +1,4 @@
-import { signupUser, loginUser } from '../services/authService.js';
+import { signupUser, loginUser, completeUserTour } from '../services/authService.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
 import { ApiError } from '../utils/ApiError.js';
 
@@ -35,6 +35,19 @@ export const login = asyncHandler(async (req, res) => {
     return res.status(200).json({
         success: true,
         message: 'Logged in successfully',
+        ...result,
+    });
+});
+
+// @desc    Complete product tour
+// @route   PATCH /api/auth/complete-tour
+export const completeTour = asyncHandler(async (req, res) => {
+    const userId = req.user._id || req.user.id;
+    const result = await completeUserTour(userId);
+
+    return res.status(200).json({
+        success: true,
+        message: 'Product tour completed successfully',
         ...result,
     });
 });

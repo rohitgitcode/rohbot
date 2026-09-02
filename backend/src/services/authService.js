@@ -21,6 +21,7 @@ const sanitizeUser = (user) => {
     name: user.name,
     email: user.email,
     role: user.role || 'user',
+    hasCompletedTour: user.hasCompletedTour ?? false,
   };
 };
 
@@ -44,11 +45,31 @@ export const signupUser = async ({ name, email, password }) => {
     name: normalizedName,
     email: normalizedEmail,
     password: hashedPassword,
+    hasCompletedTour: false,
   });
 
   const token = generateToken(user._id);
   return {
     token,
+    user: sanitizeUser(user),
+    isNewUser: true,
+  };
+};
+
+export const completeUserTour = async (userId) => {
+  const user = await User.findByIdAndUpdate(
+    userId,
+    { hasCompletedTour: true },
+    { new: true }
+  );
+
+  if (!user) {
+    const error = new Error('User not found');
+    error.statusCode = 404;
+    throw error;
+  }
+
+  return {
     user: sanitizeUser(user),
   };
 };

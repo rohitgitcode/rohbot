@@ -8,12 +8,11 @@ const connectDB = async () => {
 
     console.log(` MongoDB Connected: ${conn.connection.host}`);
   } catch (error) {
-    console.error(`❌ Database Connection Error: ${error.message}`);
-    process.exit(1); // Production rule: DB fail hua to process terminate karo
+    console.error(` Database Connection Error: ${error.message}`);
+    process.exit(1); // prod rule ( db fail then terminate safely)
   }
 };
 
-// Handle process termination gracefully
 process.on('SIGINT', async () => {
   await mongoose.connection.close();
   console.log('MongoDB connection closed due to app termination');

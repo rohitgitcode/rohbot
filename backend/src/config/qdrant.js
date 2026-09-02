@@ -4,7 +4,7 @@ const qdrantUrl = process.env.QDRANT_URL;
 const qdrantApiKey = process.env.QDRANT_API_KEY;
 
 if (!qdrantUrl) {
-  console.warn('⚠️ QDRANT_URL is not defined in environment variables.');
+  console.warn(' QDRANT_URL is not defined in environment variables.');
 }
 
 export const qdrantClient = new QdrantClient({
@@ -22,11 +22,11 @@ export const initQdrantCollection = async () => {
     const exists = collections.collections.some((c) => c.name === COLLECTION_NAME);
 
     if (!exists) {
-      // Vector size 384 (Xenova/all-MiniLM-L6-v2 embedding model ke liye)
+      
       await qdrantClient.createCollection(COLLECTION_NAME, {
         vectors: {
           size: 384,
-          distance: 'Cosine',
+          distance: 'Cosine', // 1 identical , 0 not identical 
         },
       });
 

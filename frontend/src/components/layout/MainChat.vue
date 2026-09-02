@@ -80,14 +80,14 @@ watch(() => chatStore.currentMessages.length, () => {
       </div>
 
       <div class="header-actions">
-        <button @click="$emit('openEmbed')" class="btn-secondary embed-btn" style="margin-right: 8px;">
+        <button @click="$emit('openEmbed')" class="btn-secondary embed-btn" data-tour="embed-btn" style="margin-right: 8px;">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <polyline points="16 18 22 12 16 6"></polyline>
             <polyline points="8 6 2 12 8 18"></polyline>
           </svg>
           Embed Widget
         </button>
-        <button @click="$emit('openUpload')" class="btn-secondary upload-btn">
+        <button @click="$emit('openUpload')" class="btn-secondary upload-btn" data-tour="upload-btn">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
             <polyline points="17 8 12 3 7 8"></polyline>
@@ -129,7 +129,7 @@ watch(() => chatStore.currentMessages.length, () => {
     </div>
 
     <!-- Input Dock -->
-    <div class="input-dock-container">
+    <div class="input-dock-container" data-tour="chat-input">
       <div class="input-wrapper" :class="{ 'is-focused': true }">
         <button class="attachment-btn" @click="$emit('openUpload')" title="Upload Context Document">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">

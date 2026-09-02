@@ -29,6 +29,15 @@ export interface KBDocument {
   sourceUrl?: string
 }
 
+export interface UserProfile {
+  _id?: string
+  id?: string
+  name: string
+  email: string
+  role?: string
+  hasCompletedTour?: boolean
+}
+
 export interface ChatThread {
   _id: string
   title: string
@@ -39,6 +48,19 @@ export const useChatStore = defineStore('chat', () => {
   // State
   const token = ref<string>(localStorage.getItem('rohbot_token') || '')
   const isAuthenticated = computed(() => !!token.value)
+
+  const loadSavedUser = (): UserProfile | null => {
+    try {
+      const saved = localStorage.getItem('rohbot_user')
+      return saved ? JSON.parse(saved) : null
+    } catch {
+      return null
+    }
+  }
+
+  const currentUser = ref<UserProfile | null>(loadSavedUser())
+
+  const isTourOpen = ref<boolean>(false)
 
   const bots = ref<Bot[]>([])
   const activeBotId = ref<string>('')
@@ -52,6 +74,15 @@ export const useChatStore = defineStore('chat', () => {
   const isLoading = ref<boolean>(false)
 
   // Actions
+  const setCurrentUser = (user: UserProfile | null) => {
+    currentUser.value = user
+    if (user) {
+      localStorage.setItem('rohbot_user', JSON.stringify(user))
+    } else {
+      localStorage.removeItem('rohbot_user')
+    }
+  }
+
   const setToken = (newToken: string) => {
     token.value = newToken
     if (newToken) {
@@ -61,8 +92,64 @@ export const useChatStore = defineStore('chat', () => {
     }
   }
 
+  const startTour = () => {
+    isTourOpen.value = true
+  }
+
+  const closeTour = () => {
+    isTourOpen.value = false
+  }
+
+  const completeTour = async () => {
+    isTourOpen.value = false
+    if (currentUser.value) {
+      currentUser.value.hasCompletedTour = true
+      localStorage.setItem('rohbot_user', JSON.stringify(currentUser.value))
+      const uid = currentUser.value.id || currentUser.value._id
+      if (uid) {
+        localStorage.setItem(`rohbot_tour_completed_${uid}`, 'true')
+      }
+    }
+    localStorage.setItem('rohbot_tour_completed', 'true')
+
+    if (isAuthenticated.value && token.value) {
+      try {
+        await fetch(`${API_BASE}/api/auth/complete-tour`, {
+          method: 'PATCH',
+          headers: {
+            'Authorization': `Bearer ${token.value}`,
+            'Content-Type': 'application/json'
+          }
+        })
+      } catch (e) {
+        console.error('Failed to sync tour completion with backend:', e)
+      }
+    }
+  }
+
+  const fetchCurrentUser = async () => {
+    if (!isAuthenticated.value) return null
+    try {
+      const res = await fetch(`${API_BASE}/api/auth/me`, {
+        headers: { 'Authorization': `Bearer ${token.value}` }
+      })
+      if (res.ok) {
+        const data = await res.json()
+        if (data.user) {
+          setCurrentUser(data.user)
+          return data.user
+        }
+      }
+    } catch (e) {
+      console.error('Failed to fetch user:', e)
+    }
+    return null
+  }
+
   const logout = () => {
     setToken('')
+    setCurrentUser(null)
+    isTourOpen.value = false
     chatHistory.value = []
     currentMessages.value = []
     currentChatId.value = null
@@ -416,6 +503,13 @@ export const useChatStore = defineStore('chat', () => {
   }
 
   return {
+    currentUser,
+    isTourOpen,
+    setCurrentUser,
+    fetchCurrentUser,
+    startTour,
+    closeTour,
+    completeTour,
     token,
     isAuthenticated,
     bots,

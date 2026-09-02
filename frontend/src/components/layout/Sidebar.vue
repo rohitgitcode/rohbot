@@ -95,7 +95,7 @@ const handleBulkDelete = async () => {
     </div>
 
     <!-- Bot Switcher -->
-    <div class="bot-switcher">
+    <div class="bot-switcher" data-tour="bot-switcher">
       <div class="bot-switcher-header">
         <label>Workspace</label>
         <div class="bot-actions">
@@ -140,7 +140,7 @@ const handleBulkDelete = async () => {
     </div>
 
     <!-- New Chat Button -->
-    <button @click="chatStore.startNewChat" class="btn-primary new-chat-btn">
+    <button @click="chatStore.startNewChat" class="btn-primary new-chat-btn" data-tour="new-thread">
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
         <line x1="12" y1="5" x2="12" y2="19"></line>
         <line x1="5" y1="12" x2="19" y2="12"></line>
@@ -149,7 +149,7 @@ const handleBulkDelete = async () => {
     </button>
 
     <!-- Chat History -->
-    <div class="chat-history">
+    <div class="chat-history" data-tour="chat-history">
       <div class="history-header">
         <h3 class="history-title">Recent Activity</h3>
         <button 
@@ -236,17 +236,24 @@ const handleBulkDelete = async () => {
     </div>
 
     <!-- User Profile Footer -->
-    <div class="user-footer">
+    <div class="user-footer" data-tour="user-footer">
       <div class="user-info">
         <div class="avatar user-avatar">
-          <span class="user-monogram">D</span>
+          <span class="user-monogram">{{ (chatStore.currentUser?.name?.[0] || 'D').toUpperCase() }}</span>
         </div>
         <div class="user-details">
-          <span class="user-name">Developer</span>
-          <span class="user-role">Workspace Admin</span>
+          <span class="user-name">{{ chatStore.currentUser?.name || 'Developer' }}</span>
+          <span class="user-role">{{ chatStore.currentUser?.email || 'Workspace Admin' }}</span>
         </div>
       </div>
       <div class="user-footer-actions">
+        <button @click="chatStore.startTour" class="tour-trigger-btn" title="Take Product Tour">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="10"></circle>
+            <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path>
+            <line x1="12" y1="17" x2="12.01" y2="17"></line>
+          </svg>
+        </button>
         <ThemeToggle />
         <button @click="chatStore.logout" class="logout-btn" title="Sign Out">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -665,6 +672,25 @@ const handleBulkDelete = async () => {
   display: flex;
   align-items: center;
   gap: var(--space-2);
+}
+
+.tour-trigger-btn {
+  background: transparent;
+  border: 1px solid transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 6px;
+  border-radius: 6px;
+  transition: all var(--transition-fast);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.tour-trigger-btn:hover {
+  background: var(--bg-panel-light);
+  border-color: var(--border-strong);
+  color: var(--accent-primary);
 }
 
 .logout-btn {

@@ -7,6 +7,7 @@ import KnowledgeBaseDrawer from './components/ui/KnowledgeBaseDrawer.vue'
 import WidgetEmbedModal from './components/ui/WidgetEmbedModal.vue'
 import LoginModal from './components/ui/LoginModal.vue'
 import CreateBotModal from './components/ui/CreateBotModal.vue'
+import ProductTour from './components/ui/ProductTour.vue'
 import HomePage from './components/layout/HomePage.vue'
 import { useTheme } from './composables/useTheme'
 
@@ -20,23 +21,57 @@ const isLoginModalOpen = ref(false)
 const loginMode = ref(true)
 
 const checkOnboarding = () => {
+  if (chatStore.isTourOpen) return
   if (chatStore.bots.length === 0) {
     isCreateModalOpen.value = true
   }
 }
 
+const shouldShowTour = () => {
+  const uid = chatStore.currentUser?.id || chatStore.currentUser?._id
+  const localCompleted = uid
+    ? localStorage.getItem(`rohbot_tour_completed_${uid}`)
+    : localStorage.getItem('rohbot_tour_completed')
+  
+  if (localCompleted === 'true') return false
+  if (chatStore.currentUser && chatStore.currentUser.hasCompletedTour) return false
+  return true
+}
+
 onMounted(async () => {
   if (chatStore.isAuthenticated) {
+    await chatStore.fetchCurrentUser()
     await chatStore.fetchBots()
     await chatStore.fetchChatHistory()
-    checkOnboarding()
+
+    if (shouldShowTour()) {
+      chatStore.startTour()
+    } else {
+      checkOnboarding()
+    }
   }
 })
 
-const handleLoginSuccess = async () => {
+const handleLoginSuccess = async (meta?: { isNewUser?: boolean }) => {
   isLoginModalOpen.value = false
+  await chatStore.fetchCurrentUser()
   await chatStore.fetchBots()
   await chatStore.fetchChatHistory()
+
+  if (meta?.isNewUser || shouldShowTour()) {
+    chatStore.startTour()
+  } else {
+    checkOnboarding()
+  }
+}
+
+const handleTourFinish = () => {
+  chatStore.completeTour()
+  checkOnboarding()
+}
+
+const handleTourClose = () => {
+  chatStore.closeTour()
   checkOnboarding()
 }
 
@@ -65,6 +100,11 @@ const openLogin = (isLogin: boolean) => {
       <CreateBotModal 
         :isOpen="isCreateModalOpen" 
         @close="isCreateModalOpen = false" 
+      />
+      <ProductTour
+        :isOpen="chatStore.isTourOpen"
+        @close="handleTourClose"
+        @finish="handleTourFinish"
       />
     </template>
     

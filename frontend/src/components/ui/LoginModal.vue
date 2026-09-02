@@ -8,7 +8,7 @@ const props = defineProps<{
 }>()
 
 const emit = defineEmits<{
-  (e: 'success'): void
+  (e: 'success', meta?: { isNewUser?: boolean }): void
   (e: 'close'): void
 }>()
 
@@ -31,7 +31,7 @@ const handleAuth = async () => {
     }
     chatStore.setToken(customToken.value.trim())
     await chatStore.fetchBots()
-    emit('success')
+    emit('success', { isNewUser: false })
     return
   }
 
@@ -59,8 +59,12 @@ const handleAuth = async () => {
       const data = await res.json()
       if (data.token) {
         chatStore.setToken(data.token)
+        if (data.user) {
+          chatStore.setCurrentUser(data.user)
+        }
         await chatStore.fetchBots()
-        emit('success')
+        const isNewUser = !isLoginMode.value || !!data.isNewUser || (data.user && !data.user.hasCompletedTour)
+        emit('success', { isNewUser: !!isNewUser })
       } else {
         throw new Error('No token received')
       }

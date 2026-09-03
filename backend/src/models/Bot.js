@@ -70,6 +70,9 @@ const botSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
+// Compound index for querying a user's active bots quickly
+botSchema.index({ userId: 1, isActive: 1 });
+
 const Bot = mongoose.model('Bot', botSchema);
 
 export default Bot;

@@ -48,6 +48,9 @@ const documentSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
+// Compound index for querying documents belonging to a bot filtered/sorted by status
+documentSchema.index({ botId: 1, status: 1 });
+
 const Document = mongoose.model('Document', documentSchema);
 
 export default Document;

@@ -14,6 +14,7 @@ const userSchema = new mongoose.Schema(
       lowercase: true,
       trim: true,
       index: true,
+      match: [/^\w+([.-]?\w+)*@\w+([.-]?\w+)*(\.\w{2,})+$/, 'Please provide a valid email address'],
     },
     password: {
       type: String,
@@ -34,4 +35,4 @@ const userSchema = new mongoose.Schema(
 );
 
 const User = mongoose.model('User', userSchema);
-export default User; // <-- Make sure ye exact line ho bottom par!
+export default User; 

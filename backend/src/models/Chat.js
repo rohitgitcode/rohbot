@@ -29,6 +29,12 @@ const chatSchema = new mongoose.Schema(
       required: true,
       index: true, // Fast querying per user ke liye
     },
+    botId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Bot',
+      default: null,
+      index: true, // Multi-tenant bot isolation
+    },
     title: {
       type: String,
       default: 'New Conversation',
@@ -38,6 +44,9 @@ const chatSchema = new mongoose.Schema(
   },
   { timestamps: true }
 );
+
+// Compound index for fast retrieval of chats by a user for a specific bot
+chatSchema.index({ userId: 1, botId: 1, updatedAt: -1 });
 
 const Chat = mongoose.model('Chat', chatSchema);
 

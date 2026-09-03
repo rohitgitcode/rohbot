@@ -15,7 +15,7 @@ const botSchema = new mongoose.Schema(
       type: String,
       required: true,
       trim: true,
-      default: 'My Custom Assistant',
+      default: 'My Custom Assistant', 
     },
     systemPrompt: {
       type: String,

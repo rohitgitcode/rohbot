@@ -2,7 +2,7 @@ import Bot from '../models/Bot.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
 import { ApiError } from '../utils/ApiError.js';
 
-// 1. Create a New Bot
+// 1. Create a New Bot 
 export const createBot = asyncHandler(async (req, res) => {
   const { name, systemPrompt, appearance, allowedDomains } = req.body;
 

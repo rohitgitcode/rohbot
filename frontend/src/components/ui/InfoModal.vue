@@ -259,7 +259,6 @@ const tabTitles: Record<InfoModalTab, string> = {
   color: var(--text-primary);
 }
 
-/* Tabs Navigation */
 .tabs-nav {
   display: flex;
   gap: var(--space-2);
@@ -268,6 +267,7 @@ const tabTitles: Record<InfoModalTab, string> = {
   border-bottom: 1px solid var(--border-light);
   overflow-x: auto;
   white-space: nowrap;
+  -webkit-overflow-scrolling: touch;
 }
 
 .tab-btn {
@@ -283,6 +283,7 @@ const tabTitles: Record<InfoModalTab, string> = {
   display: flex;
   align-items: center;
   gap: 4px;
+  flex-shrink: 0;
 }
 
 .tab-btn:hover {
@@ -317,8 +318,34 @@ const tabTitles: Record<InfoModalTab, string> = {
 }
 
 @media (max-width: 768px) {
+  .modal-backdrop {
+    padding: var(--space-2);
+  }
+
+  .modal-container {
+    max-height: 94dvh;
+    border-radius: 12px;
+  }
+
+  .modal-header {
+    padding: var(--space-4);
+  }
+
+  .modal-header h2 {
+    font-size: 1.15rem;
+  }
+
   .tabs-nav {
-    padding: var(--space-2) var(--space-4);
+    padding: var(--space-2) var(--space-3);
+  }
+
+  .tab-btn {
+    padding: 6px 10px;
+    font-size: 0.8rem;
+  }
+
+  .modal-body {
+    padding: var(--space-4);
   }
 }
 </style>

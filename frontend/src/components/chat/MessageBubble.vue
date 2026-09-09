@@ -189,6 +189,8 @@ const retryMessage = () => {
   padding: var(--space-3) var(--space-4);
   font-size: 0.95rem;
   line-height: 1.7;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 .is-user .bubble {
@@ -246,6 +248,7 @@ const retryMessage = () => {
 
 .bubble-inner {
   flex: 1;
+  min-width: 0;
 }
 
 .bubble-inner :deep(p) {
@@ -265,6 +268,8 @@ const retryMessage = () => {
   padding: var(--space-3);
   border-radius: 6px;
   overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  max-width: 100%;
   margin: var(--space-3) 0;
   border: 1px solid var(--border-strong);
 }
@@ -370,5 +375,33 @@ const retryMessage = () => {
 
 .tooltip.show {
   opacity: 1;
+}
+
+@media (max-width: 768px) {
+  .message-wrapper {
+    max-width: 96%;
+    gap: var(--space-2);
+    margin-bottom: var(--space-4);
+  }
+
+  .message-avatar {
+    width: 28px;
+    height: 28px;
+  }
+
+  .bubble {
+    padding: var(--space-2) var(--space-3);
+    font-size: 0.9rem;
+  }
+
+  .message-actions {
+    opacity: 0.9;
+  }
+}
+
+@media (hover: none) {
+  .message-actions {
+    opacity: 0.9;
+  }
 }
 </style>

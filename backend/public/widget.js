@@ -306,6 +306,22 @@
     .chat-body::-webkit-scrollbar-thumb:hover {
       background: #475569;
     }
+
+    @media (max-width: 480px) {
+      .chat-window {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        width: 100vw;
+        height: 100vh;
+        height: 100dvh;
+        max-height: 100vh;
+        max-height: 100dvh;
+        border-radius: 0;
+      }
+    }
   `;
   shadow.appendChild(style);
 

@@ -393,8 +393,10 @@ const handleIngestUrl = async () => {
 }
 
 .modal-drawer {
-  width: 400px;
+  width: 100%;
+  max-width: 420px;
   height: 100vh;
+  height: 100dvh;
   border-left: 1px solid var(--border-light);
   border-radius: 0;
   background: var(--bg-panel);
@@ -517,6 +519,8 @@ const handleIngestUrl = async () => {
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  min-width: 0;
+  flex: 1;
 }
 
 .doc-filename {
@@ -796,5 +800,17 @@ const handleIngestUrl = async () => {
 
 .mt-4 {
   margin-top: var(--space-4);
+}
+
+@media (max-width: 480px) {
+  .modal-drawer {
+    max-width: 100vw;
+  }
+  .modal-header {
+    padding: var(--space-3) var(--space-4);
+  }
+  .modal-body {
+    padding: var(--space-4);
+  }
 }
 </style>

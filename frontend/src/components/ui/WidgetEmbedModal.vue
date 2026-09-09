@@ -88,21 +88,26 @@ const copySnippet = () => {
   inset: 0;
   background: rgba(15, 23, 42, 0.6); /* Slate overlay */
   backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
   z-index: 200;
   display: flex;
   align-items: center;
   justify-content: center;
+  padding: var(--space-4);
 }
 
 .modal-card {
   width: 100%;
   max-width: 500px;
+  max-height: 90vh;
+  max-height: 90dvh;
   border-radius: 12px;
   background: var(--bg-panel);
   display: flex;
   flex-direction: column;
   box-shadow: var(--shadow-lg);
   animation: popIn 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  overflow: hidden;
 }
 
 @keyframes popIn {
@@ -116,6 +121,7 @@ const copySnippet = () => {
   align-items: center;
   padding: var(--space-4) var(--space-6);
   border-bottom: 1px solid var(--border-light);
+  flex-shrink: 0;
 }
 
 .modal-header h2 {
@@ -141,6 +147,8 @@ const copySnippet = () => {
 
 .modal-body {
   padding: var(--space-6);
+  overflow-y: auto;
+  flex: 1;
 }
 
 .description {

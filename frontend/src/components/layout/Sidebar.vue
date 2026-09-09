@@ -83,7 +83,7 @@ const handleBulkDelete = async () => {
 </script>
 
 <template>
-  <aside class="sidebar glass-panel">
+  <aside class="sidebar glass-panel" :class="{ 'is-mobile-open': chatStore.isMobileSidebarOpen }">
     <!-- Brand Header -->
     <div class="brand-header">
       <div class="logo">
@@ -92,6 +92,17 @@ const handleBulkDelete = async () => {
         </div>
         <h1>RohBot</h1>
       </div>
+      <button 
+        class="mobile-close-btn" 
+        @click="chatStore.closeSidebar" 
+        title="Close Sidebar"
+        aria-label="Close sidebar"
+      >
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="18" y1="6" x2="6" y2="18"></line>
+          <line x1="6" y1="6" x2="18" y2="18"></line>
+        </svg>
+      </button>
     </div>
 
     <!-- Bot Switcher -->
@@ -105,7 +116,7 @@ const handleBulkDelete = async () => {
               <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
             </svg>
           </button>
-          <button @click="$emit('openCreate')" class="action-btn add-bot-btn" title="Create Workspace">
+          <button @click="$emit('openCreate'); chatStore.closeSidebar()" class="action-btn add-bot-btn" title="Create Workspace">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
               <line x1="12" y1="5" x2="12" y2="19"></line>
               <line x1="5" y1="12" x2="19" y2="12"></line>
@@ -285,6 +296,25 @@ const handleBulkDelete = async () => {
   margin-bottom: var(--space-6);
   padding-bottom: var(--space-4);
   border-bottom: 1px solid var(--border-light);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.mobile-close-btn {
+  display: none;
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 6px;
+  border-radius: 6px;
+  transition: all var(--transition-fast);
+}
+
+.mobile-close-btn:hover {
+  background: var(--bg-panel-light);
+  color: var(--text-primary);
 }
 
 .logo {
@@ -710,5 +740,32 @@ const handleBulkDelete = async () => {
   background: var(--bg-panel-light);
   border-color: var(--border-strong);
   color: var(--text-primary);
+}
+
+@media (max-width: 768px) {
+  .sidebar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    width: 290px;
+    max-width: 85vw;
+    height: 100vh;
+    height: 100dvh;
+    z-index: 50;
+    transform: translateX(-100%);
+    transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    box-shadow: 10px 0 30px rgba(0, 0, 0, 0.6);
+  }
+
+  .sidebar.is-mobile-open {
+    transform: translateX(0);
+  }
+
+  .mobile-close-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
 }
 </style>

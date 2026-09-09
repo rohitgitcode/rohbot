@@ -189,17 +189,31 @@ const handleAuth = async () => {
   align-items: center;
   justify-content: center;
   z-index: 1000;
+  padding: var(--space-4);
+  overflow-y: auto;
 }
 
 .login-card {
   width: 100%;
   max-width: 440px;
+  max-height: 90vh;
+  max-height: 90dvh;
+  overflow-y: auto;
   padding: var(--space-8);
   background: var(--bg-panel);
   border: 1px solid var(--border-light);
   border-radius: 12px;
   box-shadow: var(--shadow-lg);
   position: relative;
+}
+
+@media (max-width: 480px) {
+  .login-wrapper {
+    padding: var(--space-2);
+  }
+  .login-card {
+    padding: var(--space-6) var(--space-4);
+  }
 }
 
 .close-btn {

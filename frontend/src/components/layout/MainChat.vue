@@ -58,42 +58,57 @@ watch(() => chatStore.currentMessages.length, () => {
   <main class="main-chat">
     <!-- Header -->
     <header class="chat-header">
-      <div class="header-info">
-        <h2 class="bot-name">{{ activeBotName }}</h2>
-        <div class="status-badges">
-          <span class="badge badge-outline">
-            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
-              <polyline points="22 4 12 14.01 9 11.01"></polyline>
-            </svg>
-            RAG Active
-          </span>
-          <span class="badge badge-solid">
-            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-              <ellipse cx="12" cy="5" rx="9" ry="3"></ellipse>
-              <path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"></path>
-              <path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"></path>
-            </svg>
-            Qdrant
-          </span>
+      <div class="header-left">
+        <button 
+          class="sidebar-toggle-btn"
+          @click="chatStore.toggleSidebar"
+          title="Toggle Navigation Menu"
+          aria-label="Toggle navigation menu"
+        >
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="3" y1="12" x2="21" y2="12"></line>
+            <line x1="3" y1="6" x2="21" y2="6"></line>
+            <line x1="3" y1="18" x2="21" y2="18"></line>
+          </svg>
+        </button>
+
+        <div class="header-info">
+          <h2 class="bot-name" :title="activeBotName">{{ activeBotName }}</h2>
+          <div class="status-badges">
+            <span class="badge badge-outline">
+              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+                <polyline points="22 4 12 14.01 9 11.01"></polyline>
+              </svg>
+              <span class="badge-text">RAG Active</span>
+            </span>
+            <span class="badge badge-solid">
+              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <ellipse cx="12" cy="5" rx="9" ry="3"></ellipse>
+                <path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"></path>
+                <path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"></path>
+              </svg>
+              <span class="badge-text">Qdrant</span>
+            </span>
+          </div>
         </div>
       </div>
 
       <div class="header-actions">
-        <button @click="$emit('openEmbed')" class="btn-secondary embed-btn" data-tour="embed-btn" style="margin-right: 8px;">
+        <button @click="$emit('openEmbed')" class="btn-secondary embed-btn" data-tour="embed-btn" title="Embed Widget">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <polyline points="16 18 22 12 16 6"></polyline>
             <polyline points="8 6 2 12 8 18"></polyline>
           </svg>
-          Embed Widget
+          <span class="btn-label">Embed Widget</span>
         </button>
-        <button @click="$emit('openUpload')" class="btn-secondary upload-btn" data-tour="upload-btn">
+        <button @click="$emit('openUpload')" class="btn-secondary upload-btn" data-tour="upload-btn" title="Upload Document">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
             <polyline points="17 8 12 3 7 8"></polyline>
             <line x1="12" y1="3" x2="12" y2="15"></line>
           </svg>
-          Upload Document
+          <span class="btn-label">Upload Document</span>
         </button>
       </div>
     </header>
@@ -173,8 +188,10 @@ watch(() => chatStore.currentMessages.length, () => {
   display: flex;
   flex-direction: column;
   height: 100vh;
+  height: 100dvh;
   position: relative;
   background: var(--bg-dark);
+  min-width: 0;
 }
 
 /* Header */
@@ -182,16 +199,45 @@ watch(() => chatStore.currentMessages.length, () => {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: var(--space-4) var(--space-6);
+  padding: var(--space-3) var(--space-6);
   border-bottom: 1px solid var(--border-light);
   background: var(--bg-dark);
   z-index: 10;
+  gap: var(--space-3);
+  min-height: 64px;
+}
+
+.header-left {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-width: 0;
+}
+
+.sidebar-toggle-btn {
+  display: none;
+  background: transparent;
+  border: 1px solid var(--border-light);
+  color: var(--text-primary);
+  cursor: pointer;
+  padding: 8px;
+  border-radius: 8px;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: all var(--transition-fast);
+}
+
+.sidebar-toggle-btn:hover {
+  background: var(--bg-panel-light);
+  border-color: var(--accent-primary);
 }
 
 .header-info {
   display: flex;
   align-items: center;
-  gap: var(--space-4);
+  gap: var(--space-3);
+  min-width: 0;
 }
 
 .bot-name {
@@ -199,6 +245,9 @@ watch(() => chatStore.currentMessages.length, () => {
   font-weight: 600;
   margin: 0;
   color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .status-badges {
@@ -378,5 +427,59 @@ watch(() => chatStore.currentMessages.length, () => {
   font-size: 0.75rem;
   color: var(--text-muted);
   margin-top: var(--space-3);
+}
+
+@media (max-width: 768px) {
+  .chat-header {
+    padding: var(--space-2) var(--space-3);
+  }
+
+  .sidebar-toggle-btn {
+    display: flex;
+  }
+
+  .bot-name {
+    font-size: 1rem;
+    max-width: 120px;
+  }
+
+  .status-badges {
+    display: none;
+  }
+
+  .embed-btn, .upload-btn {
+    padding: 8px;
+  }
+
+  .btn-label {
+    display: none;
+  }
+
+  .chat-container {
+    padding: var(--space-3) var(--space-2);
+  }
+
+  .input-dock-container {
+    padding: 0 var(--space-2) var(--space-2);
+  }
+
+  .input-wrapper {
+    padding: 6px 8px;
+    border-radius: 10px;
+  }
+
+  .dock-footer {
+    display: none;
+  }
+}
+
+@media (min-width: 769px) and (max-width: 1024px) {
+  .bot-name {
+    max-width: 180px;
+  }
+
+  .badge-solid {
+    display: none;
+  }
 }
 </style>

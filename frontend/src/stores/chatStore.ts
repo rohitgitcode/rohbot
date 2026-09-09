@@ -61,6 +61,7 @@ export const useChatStore = defineStore('chat', () => {
   const currentUser = ref<UserProfile | null>(loadSavedUser())
 
   const isTourOpen = ref<boolean>(false)
+  const isMobileSidebarOpen = ref<boolean>(false)
 
   const bots = ref<Bot[]>([])
   const activeBotId = ref<string>('')
@@ -72,6 +73,18 @@ export const useChatStore = defineStore('chat', () => {
   const currentMessages = ref<ChatMessage[]>([])
 
   const isLoading = ref<boolean>(false)
+
+  const openSidebar = () => {
+    isMobileSidebarOpen.value = true
+  }
+
+  const closeSidebar = () => {
+    isMobileSidebarOpen.value = false
+  }
+
+  const toggleSidebar = () => {
+    isMobileSidebarOpen.value = !isMobileSidebarOpen.value
+  }
 
   // Actions
   const setCurrentUser = (user: UserProfile | null) => {
@@ -150,6 +163,7 @@ export const useChatStore = defineStore('chat', () => {
     setToken('')
     setCurrentUser(null)
     isTourOpen.value = false
+    closeSidebar()
     chatHistory.value = []
     currentMessages.value = []
     currentChatId.value = null
@@ -249,6 +263,7 @@ export const useChatStore = defineStore('chat', () => {
     activeBotId.value = botId
     currentChatId.value = null
     currentMessages.value = []
+    closeSidebar()
     await fetchDocuments(botId)
     await fetchChatHistory(botId)
   }
@@ -256,11 +271,13 @@ export const useChatStore = defineStore('chat', () => {
   const startNewChat = () => {
     currentChatId.value = null
     currentMessages.value = []
+    closeSidebar()
   }
 
   const loadChat = async (chatId: string) => {
     if (!isAuthenticated.value) return
     try {
+      closeSidebar()
       isLoading.value = true
       const res = await fetch(`${API_BASE}/api/chat/${chatId}`, {
         headers: { 'Authorization': `Bearer ${token.value}` }
@@ -505,6 +522,10 @@ export const useChatStore = defineStore('chat', () => {
   return {
     currentUser,
     isTourOpen,
+    isMobileSidebarOpen,
+    openSidebar,
+    closeSidebar,
+    toggleSidebar,
     setCurrentUser,
     fetchCurrentUser,
     startTour,

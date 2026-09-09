@@ -16,6 +16,7 @@ const openInfoModal = (tab: InfoModalTab) => {
 }
 
 const scrollToFeatures = () => {
+  isMobileMenuOpen.value = false
   isInfoModalOpen.value = false
   const el = document.getElementById('features')
   if (el) {
@@ -23,7 +24,27 @@ const scrollToFeatures = () => {
   }
 }
 
+const isMobileMenuOpen = ref(false)
+
+const toggleMobileMenu = () => {
+  isMobileMenuOpen.value = !isMobileMenuOpen.value
+}
+
+const closeMobileMenu = () => {
+  isMobileMenuOpen.value = false
+}
+
+const scrollToSection = (id: string) => {
+  closeMobileMenu()
+  isInfoModalOpen.value = false
+  const el = document.getElementById(id)
+  if (el) {
+    el.scrollIntoView({ behavior: 'smooth' })
+  }
+}
+
 const scrollToTop = () => {
+  closeMobileMenu()
   const container = document.querySelector('.homepage-container')
   if (container) {
     container.scrollTo({ top: 0, behavior: 'smooth' })
@@ -55,13 +76,45 @@ const scrollToTop = () => {
         
         <div class="nav-links">
           <a href="#features" @click.prevent="scrollToFeatures">Features</a>
-          <a href="#how-it-works">How it Works</a>
+          <a href="#how-it-works" @click.prevent="scrollToSection('how-it-works')">How it Works</a>
+          <a href="#pricing" @click.prevent="openInfoModal('pricing')">Pricing</a>
         </div>
         
         <div class="nav-auth">
           <ThemeToggle />
           <button class="btn-secondary" @click="emit('open-login', true)">Log in</button>
           <button class="btn-primary" @click="emit('open-login', false)">Sign up free</button>
+        </div>
+
+        <!-- Mobile Nav Actions -->
+        <div class="mobile-nav-actions">
+          <ThemeToggle />
+          <button 
+            class="hamburger-btn" 
+            :class="{ active: isMobileMenuOpen }" 
+            @click="toggleMobileMenu" 
+            aria-label="Toggle mobile menu"
+          >
+            <span></span>
+            <span></span>
+            <span></span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Mobile Dropdown Menu -->
+      <div v-if="isMobileMenuOpen" class="mobile-menu-drawer fade-in">
+        <div class="mobile-menu-links">
+          <a href="#features" @click.prevent="scrollToFeatures">Features</a>
+          <a href="#how-it-works" @click.prevent="scrollToSection('how-it-works')">How it Works</a>
+          <a href="#pricing" @click.prevent="openInfoModal('pricing'); closeMobileMenu()">Pricing</a>
+          <a href="#integrations" @click.prevent="openInfoModal('integrations'); closeMobileMenu()">Integrations</a>
+          <a href="#contact" @click.prevent="openInfoModal('contact'); closeMobileMenu()">Contact</a>
+        </div>
+        <div class="mobile-menu-divider"></div>
+        <div class="mobile-menu-auth">
+          <button class="btn-secondary w-full" @click="emit('open-login', true); closeMobileMenu()">Log in</button>
+          <button class="btn-primary w-full" @click="emit('open-login', false); closeMobileMenu()">Sign up free</button>
         </div>
       </div>
     </nav>
@@ -346,8 +399,8 @@ const scrollToTop = () => {
 }
 
 .hero-title {
-  font-size: 3.5rem;
-  line-height: 1.1;
+  font-size: clamp(2.2rem, 5.5vw, 3.5rem);
+  line-height: 1.15;
   margin-bottom: var(--space-6);
   letter-spacing: -1px;
 }
@@ -668,23 +721,137 @@ const scrollToTop = () => {
   font-size: 0.85rem;
 }
 
+.mobile-nav-actions {
+  display: none;
+}
+
+.hamburger-btn {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-around;
+  width: 28px;
+  height: 28px;
+  padding: 4px;
+}
+
+.hamburger-btn span {
+  width: 100%;
+  height: 2px;
+  background: var(--text-primary);
+  border-radius: 2px;
+  transition: all 0.25s ease;
+}
+
+.hamburger-btn.active span:nth-child(1) {
+  transform: translateY(7px) rotate(45deg);
+}
+
+.hamburger-btn.active span:nth-child(2) {
+  opacity: 0;
+}
+
+.hamburger-btn.active span:nth-child(3) {
+  transform: translateY(-7px) rotate(-45deg);
+}
+
+.mobile-menu-drawer {
+  position: absolute;
+  top: 72px;
+  left: 0;
+  right: 0;
+  background: var(--bg-panel);
+  border-bottom: 1px solid var(--border-light);
+  padding: var(--space-6);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  box-shadow: var(--shadow-lg);
+  z-index: 99;
+}
+
+.mobile-menu-links {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.mobile-menu-links a {
+  color: var(--text-primary);
+  text-decoration: none;
+  font-size: 1.1rem;
+  font-weight: 500;
+  padding: 6px 0;
+  transition: color var(--transition-fast);
+}
+
+.mobile-menu-links a:hover {
+  color: var(--accent-primary);
+}
+
+.mobile-menu-divider {
+  height: 1px;
+  background: var(--border-light);
+  width: 100%;
+}
+
+.mobile-menu-auth {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.w-full {
+  width: 100%;
+  text-align: center;
+}
+
 @media (max-width: 768px) {
+  .nav-container {
+    padding: 0 var(--space-4);
+  }
+
+  .nav-links,
+  .nav-auth {
+    display: none;
+  }
+
+  .mobile-nav-actions {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+  }
+
   .hero {
     grid-template-columns: 1fr;
     text-align: center;
-    gap: 3rem;
+    gap: 2.5rem;
+    padding: var(--space-6) var(--space-4) 4rem;
+    min-height: auto;
   }
   
   .hero-subtitle {
     margin: 0 auto var(--space-6);
+    font-size: 1rem;
+    max-width: 100%;
   }
   
   .hero-actions {
     justify-content: center;
+    flex-wrap: wrap;
+    gap: var(--space-3);
   }
-  
-  .nav-links {
-    display: none;
+
+  .mockup-body {
+    padding: var(--space-3);
+    height: auto;
+    min-height: 280px;
+  }
+
+  .chat-message {
+    max-width: 95%;
   }
 
   .steps-container {
@@ -699,11 +866,39 @@ const scrollToTop = () => {
   
   .features-grid {
     grid-template-columns: 1fr;
+    gap: var(--space-4);
   }
   
+  .footer {
+    padding: 3rem var(--space-4) 2rem;
+  }
+
   .footer-content {
     grid-template-columns: 1fr;
-    gap: 2rem;
+    gap: 2.5rem;
+    margin-bottom: 2.5rem;
+  }
+
+  .footer-links {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1.5rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .hero-actions {
+    flex-direction: column;
+    width: 100%;
+  }
+
+  .hero-actions .btn-large {
+    width: 100%;
+    text-align: center;
+  }
+
+  .footer-links {
+    grid-template-columns: 1fr;
+    gap: 1.5rem;
   }
 }
 </style>

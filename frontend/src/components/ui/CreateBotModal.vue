@@ -180,23 +180,28 @@ const handleCreate = async () => {
 .modal-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(15, 23, 42, 0.4); /* Slate overlay */
+  background: rgba(15, 23, 42, 0.6); /* Slate overlay */
   backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
   z-index: 100;
   display: flex;
   align-items: center;
   justify-content: center;
+  padding: var(--space-4);
 }
 
 .modal-card {
   width: 100%;
   max-width: 450px;
+  max-height: 90vh;
+  max-height: 90dvh;
   border-radius: 12px;
   background: var(--bg-panel);
   display: flex;
   flex-direction: column;
   box-shadow: var(--shadow-lg);
   animation: popIn 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  overflow: hidden;
 }
 
 @keyframes popIn {
@@ -210,6 +215,7 @@ const handleCreate = async () => {
   align-items: center;
   padding: var(--space-4) var(--space-6);
   border-bottom: 1px solid var(--border-light);
+  flex-shrink: 0;
 }
 
 .modal-header h2 {
@@ -235,12 +241,31 @@ const handleCreate = async () => {
 
 .modal-body {
   padding: var(--space-6);
+  overflow-y: auto;
+  flex: 1;
 }
 
 .description {
   color: var(--text-secondary);
   font-size: 0.95rem;
   margin-bottom: var(--space-6);
+}
+
+@media (max-width: 480px) {
+  .modal-overlay {
+    padding: var(--space-2);
+  }
+
+  .modal-header,
+  .modal-body,
+  .modal-footer {
+    padding-left: var(--space-4);
+    padding-right: var(--space-4);
+  }
+
+  .filename {
+    max-width: 160px;
+  }
 }
 
 .form-group {

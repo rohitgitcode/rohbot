@@ -105,13 +105,22 @@ const isFirstStep = computed(() => currentStepIndex.value === 0)
 const targetRect = ref<{ top: number; left: number; width: number; height: number } | null>(null)
 const popoverPosition = ref<{ top: number; left: number; arrowPlacement: string }>({ top: 0, left: 0, arrowPlacement: 'top' })
 
-const updateTargetPosition = () => {
+const updateTargetPosition = async () => {
   if (!props.isOpen || !currentStep.value) return
 
   const selector = currentStep.value.targetSelector
   if (!selector) {
     targetRect.value = null
     return
+  }
+
+  if (window.innerWidth <= 768) {
+    if (selector.includes('bot-switcher') || selector.includes('new-thread') || selector.includes('user-footer')) {
+      chatStore.openSidebar()
+    } else {
+      chatStore.closeSidebar()
+    }
+    await nextTick()
   }
 
   const el = document.querySelector(selector) as HTMLElement
@@ -204,11 +213,13 @@ const goToStep = (index: number) => {
 
 const skipTour = () => {
   chatStore.completeTour()
+  chatStore.closeSidebar()
   emit('close')
 }
 
 const finishTour = () => {
   chatStore.completeTour()
+  chatStore.closeSidebar()
   emit('finish')
   emit('close')
 }
@@ -810,5 +821,38 @@ onUnmounted(() => {
   padding: 6px 14px;
   font-size: 0.82rem;
   border-radius: 6px;
+}
+
+@media (max-width: 768px) {
+  .tour-popover {
+    position: fixed !important;
+    bottom: 16px !important;
+    left: 12px !important;
+    right: 12px !important;
+    top: auto !important;
+    width: auto !important;
+    max-width: 100% !important;
+    padding: 16px;
+    border-radius: 16px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.8), 0 0 30px rgba(139, 92, 246, 0.2);
+  }
+
+  .tour-modal-card {
+    width: calc(100vw - 32px);
+    max-height: 90vh;
+    max-height: 90dvh;
+    overflow-y: auto;
+    padding: 24px 16px;
+    border-radius: 16px;
+  }
+
+  .tour-modal-header h2 {
+    font-size: 1.35rem;
+  }
+
+  .tour-features-grid {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
 }
 </style>

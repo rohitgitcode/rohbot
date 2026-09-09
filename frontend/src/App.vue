@@ -84,6 +84,14 @@ const openLogin = (isLogin: boolean) => {
 <template>
   <div class="app-layout">
     <template v-if="chatStore.isAuthenticated">
+      <!-- Mobile sidebar backdrop -->
+      <div 
+        v-if="chatStore.isMobileSidebarOpen" 
+        class="sidebar-backdrop fade-in"
+        @click="chatStore.closeSidebar"
+        aria-hidden="true"
+      ></div>
+
       <Sidebar @openCreate="isCreateModalOpen = true" />
       <MainChat 
         @openUpload="isUploadModalOpen = true" 
@@ -124,8 +132,26 @@ const openLogin = (isLogin: boolean) => {
 .app-layout {
   display: flex;
   height: 100vh;
+  height: 100dvh;
   width: 100vw;
   overflow: hidden;
   background-color: var(--bg-dark);
+  position: relative;
+}
+
+.sidebar-backdrop {
+  display: none;
+}
+
+@media (max-width: 768px) {
+  .sidebar-backdrop {
+    display: block;
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.65);
+    backdrop-filter: blur(3px);
+    -webkit-backdrop-filter: blur(3px);
+    z-index: 45;
+  }
 }
 </style>

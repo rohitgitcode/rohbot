@@ -12,7 +12,7 @@ export const createBot = asyncHandler(async (req, res) => {
     systemPrompt,
     appearance,
     allowedDomains, 
-  });
+  }); 
 
   return res.status(201).json({
     success: true,

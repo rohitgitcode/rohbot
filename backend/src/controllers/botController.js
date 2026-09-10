@@ -16,7 +16,7 @@ export const createBot = asyncHandler(async (req, res) => {
 
   return res.status(201).json({
     success: true,
-    message: 'Bot created successfully',
+    message: 'Bot created successfully', 
     data: { bot },
   });
 });

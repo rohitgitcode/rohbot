@@ -11,7 +11,7 @@ export const createBot = asyncHandler(async (req, res) => {
     name: name || 'My Custom Assistant',
     systemPrompt,
     appearance,
-    allowedDomains,
+    allowedDomains, 
   });
 
   return res.status(201).json({

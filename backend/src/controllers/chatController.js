@@ -1,12 +1,10 @@
-import Groq from 'groq-sdk';
 import Chat from '../models/Chat.js';
 import Bot from '../models/Bot.js';
 import { searchRelevantContext } from '../services/ragService.js';
 import { isGibberish } from '../utils/inputValidator.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
 import { ApiError } from '../utils/ApiError.js';
-
-const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
+import { createChatCompletionWithFallback } from '../utils/groqHelper.js';
 
 /**
  * Helper: Sanitizes reasoning tokens & preamble leaks from LLM responses
@@ -174,10 +172,9 @@ CRITICAL OUTPUT & FORMATTING RULES:
     })),
   ];
 
-  const chatCompletion = await groq.chat.completions.create({
+  const chatCompletion = await createChatCompletionWithFallback({
     messages: apiMessages,
-    model: 'qwen/qwen3.6-27b',
-    max_tokens: 1500,
+    maxTokens: 1500,
   });
 
   const rawAiResponse = chatCompletion.choices[0]?.message?.content || '';

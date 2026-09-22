@@ -1,11 +1,9 @@
-import Groq from 'groq-sdk';
 import Bot from '../models/Bot.js';
 import { searchRelevantContext } from '../services/ragService.js';
 import { isGibberish } from '../utils/inputValidator.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
 import { ApiError } from '../utils/ApiError.js';
-
-const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
+import { createChatCompletionWithFallback } from '../utils/groqHelper.js';
 
 /**
  * Utility function to scrub any leaked reasoning blocks, internal logs, or thinking headers.
@@ -163,11 +161,9 @@ CRITICAL OUTPUT & FORMATTING RULES:
     apiMessages.push({ role: 'user', content: message });
 
     // 7. Invoke Groq LLM
-    const chatCompletion = await groq.chat.completions.create({
+    const chatCompletion = await createChatCompletionWithFallback({
         messages: apiMessages,
-        model: 'qwen/qwen3.6-27b',
-        max_tokens: 800,
-        reasoning_format: 'hidden',
+        maxTokens: 800,
     });
 
     const rawAiResponse = chatCompletion.choices[0]?.message?.content || '';

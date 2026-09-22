@@ -24,6 +24,11 @@ import { ApiError } from './utils/ApiError.js';
 connectDB();
 initQdrantCollection();
 
+import { getAvailableModels } from './utils/groqHelper.js';
+getAvailableModels().then(models => {
+  console.log(`🤖 Available Groq Models (${models.length}):`, models.join(', '));
+});
+
 const app = express();
 const PORT = process.env.PORT || 5000;
 

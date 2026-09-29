@@ -7,6 +7,7 @@ const chatStore = useChatStore()
 const emit = defineEmits<{
   (e: 'openUpload'): void
   (e: 'openEmbed'): void
+  (e: 'openEdit'): void
 }>()
 
 const activeBotName = computed(() => {
@@ -95,6 +96,18 @@ watch(() => chatStore.currentMessages.length, () => {
       </div>
 
       <div class="header-actions">
+        <button 
+          v-if="chatStore.activeBotId && chatStore.activeBotId !== 'custom'"
+          @click="$emit('openEdit')" 
+          class="btn-secondary settings-btn" 
+          title="Workspace Prompt & Settings"
+        >
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 20h9"></path>
+            <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path>
+          </svg>
+          <span class="btn-label">Settings</span>
+        </button>
         <button @click="$emit('openEmbed')" class="btn-secondary embed-btn" data-tour="embed-btn" title="Embed Widget">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <polyline points="16 18 22 12 16 6"></polyline>

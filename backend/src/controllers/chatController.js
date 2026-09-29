@@ -5,6 +5,7 @@ import { isGibberish } from '../utils/inputValidator.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
 import { ApiError } from '../utils/ApiError.js';
 import { createChatCompletionWithFallback } from '../utils/groqHelper.js';
+import { DEFAULT_SYSTEM_PROMPT } from '../constants/prompts.js';
 
 /**
  * Helper: Sanitizes reasoning tokens & preamble leaks from LLM responses
@@ -111,7 +112,7 @@ export const sendMessage = asyncHandler(async (req, res) => {
   const targetBotId = chat.botId || botId;
 
   // Fetch custom bot instructions
-  let botInstruction = 'You are a helpful AI assistant.';
+  let botInstruction = DEFAULT_SYSTEM_PROMPT;
   if (targetBotId) {
     const bot = await Bot.findById(targetBotId);
     if (bot && bot.systemPrompt) {
@@ -144,7 +145,7 @@ export const sendMessage = asyncHandler(async (req, res) => {
 
   // Build System Prompt
   const systemPrompt = isGreeting
-    ? `${botInstruction}\n\nThe user is greeting you or making casual conversation. Respond politely, naturally, and concisely. Do not complain about missing documents.`
+    ? `${botInstruction}\n\nNote: The user is greeting you or making casual conversation. Respond politely, naturally, and concisely, while indicating readiness to assist with questions about the workspace documents and resources.`
     : `
 ${botInstruction}
 
@@ -154,11 +155,14 @@ Relevant Knowledge Base Context:
 ${retrievedContext ? retrievedContext : 'NO_CONTEXT_FOUND'}
 
 CRITICAL OUTPUT & FORMATTING RULES:
-1. Provide a comprehensive, clear, and high-quality answer to the user's question based primarily on the provided context.
-2. If the context does not contain the full answer, you may supplement it with your own general knowledge, but try to remain relevant to the workspace topic. Be helpful and natural.
-3. Use Markdown formatting (bolding, lists, code blocks, etc.) to structure your response beautifully and make it easy to read.
-4. DIRECT FINAL RESPONSE ONLY: NEVER include your internal thinking process, chain-of-thought, self-corrections, or analysis in your reply. Do not use <think> tags.
-5. Be polite and professional.
+1. STRICT GROUNDING & ANTI-HALLUCINATION:
+   - Base your answer strictly and exclusively on the facts and information in the "Relevant Knowledge Base Context" above.
+   - If the context does not contain sufficient facts to answer the question (or if context is NO_CONTEXT_FOUND), you must politely state: "I'm sorry, but I don't have enough information about that in the provided documents or website links."
+   - DO NOT fabricate, guess, extrapolate, or hallucinate facts, numbers, dates, links, or assumptions outside the context.
+   - Keep your response strictly relevant to the user query and the workspace documents.
+2. DIRECT FINAL RESPONSE ONLY: NEVER include your internal thinking process, reasoning chain, self-corrections, or analysis in your reply. Do not use <think> tags.
+3. FORMATTING & READABILITY: Use Markdown (headings, bullet points, bold highlights, code blocks) to make your response structured, concise, and easy to read.
+4. TONE: Be professional, accurate, polite, and helpful.
 `.trim();
 
   // Prepare history & call Groq API
@@ -175,6 +179,7 @@ CRITICAL OUTPUT & FORMATTING RULES:
   const chatCompletion = await createChatCompletionWithFallback({
     messages: apiMessages,
     maxTokens: 1500,
+    temperature: 0.2,
   });
 
   const rawAiResponse = chatCompletion.choices[0]?.message?.content || '';

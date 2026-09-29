@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, watch } from 'vue'
+import { ref, watch, computed } from 'vue'
 import { useChatStore } from '../../stores/chatStore'
 import { DEFAULT_SYSTEM_PROMPT } from '../../constants/prompts'
 
@@ -14,17 +14,24 @@ const emit = defineEmits<{
 const chatStore = useChatStore()
 
 const botName = ref('')
-const systemPrompt = ref(DEFAULT_SYSTEM_PROMPT)
-const selectedFile = ref<File | null>(null)
-const fileInput = ref<HTMLInputElement | null>(null)
-const isDragging = ref(false)
-const isCreating = ref(false)
+const systemPrompt = ref('')
+const isSaving = ref(false)
 const errorMsg = ref('')
+const successMsg = ref('')
+
+const activeBot = computed(() => {
+  return chatStore.bots.find(b => (b as any)._id === chatStore.activeBotId || (b as any).id === chatStore.activeBotId)
+})
 
 watch(() => props.isOpen, (open) => {
   if (open) {
     errorMsg.value = ''
-    if (!systemPrompt.value.trim()) {
+    successMsg.value = ''
+    if (activeBot.value) {
+      botName.value = activeBot.value.name || ''
+      systemPrompt.value = activeBot.value.systemPrompt || DEFAULT_SYSTEM_PROMPT
+    } else {
+      botName.value = ''
       systemPrompt.value = DEFAULT_SYSTEM_PROMPT
     }
   }
@@ -34,75 +41,40 @@ const resetToDefaultPrompt = () => {
   systemPrompt.value = DEFAULT_SYSTEM_PROMPT
 }
 
-const handleDragOver = (e: DragEvent) => {
-  e.preventDefault()
-  isDragging.value = true
-}
-
-const handleDragLeave = () => {
-  isDragging.value = false
-}
-
-const handleDrop = (e: DragEvent) => {
-  e.preventDefault()
-  isDragging.value = false
-  const file = e.dataTransfer?.files?.[0]
-  if (file) {
-    if (file.type === 'application/pdf' || file.name.endsWith('.pdf')) {
-      selectedFile.value = file
-    } else {
-      errorMsg.value = 'Only PDF files are currently supported.'
-    }
-  }
-}
-
-const handleFileSelect = (e: Event) => {
-  const target = e.target as HTMLInputElement
-  const file = target.files?.[0]
-  if (file) {
-    selectedFile.value = file
-  }
-}
-
-const handleCreate = async () => {
+const handleSave = async () => {
   errorMsg.value = ''
+  successMsg.value = ''
 
   if (!botName.value.trim()) {
     errorMsg.value = 'Workspace Name is required.'
     return
   }
 
-  isCreating.value = true
+  if (!chatStore.activeBotId || chatStore.activeBotId === 'custom') {
+    errorMsg.value = 'Please select a valid workspace to edit.'
+    return
+  }
+
+  isSaving.value = true
 
   try {
-    const newBotId = await chatStore.createBot({
+    const success = await chatStore.updateBot(chatStore.activeBotId, {
       name: botName.value.trim(),
       systemPrompt: systemPrompt.value.trim() || DEFAULT_SYSTEM_PROMPT
     })
 
-    if (newBotId) {
-      if (selectedFile.value) {
-        isCreating.value = true
-        // Upload the PDF to the new bot
-        const uploadSuccess = await chatStore.uploadPdf(selectedFile.value, newBotId)
-        if (!uploadSuccess) {
-          errorMsg.value = 'Workspace created, but failed to upload document.'
-          return // Don't close modal if upload failed, so user can see it
-        }
-      }
-
-      // Success reset
-      botName.value = ''
-      systemPrompt.value = DEFAULT_SYSTEM_PROMPT
-      selectedFile.value = null
-      emit('close')
+    if (success) {
+      successMsg.value = 'Workspace updated successfully!'
+      setTimeout(() => {
+        emit('close')
+      }, 600)
     } else {
-      errorMsg.value = 'Failed to create workspace.'
+      errorMsg.value = 'Failed to update workspace.'
     }
   } catch (e) {
-    errorMsg.value = 'An error occurred during creation.'
+    errorMsg.value = 'An error occurred while updating.'
   } finally {
-    isCreating.value = false
+    isSaving.value = false
   }
 }
 </script>
@@ -112,7 +84,15 @@ const handleCreate = async () => {
     <div v-if="isOpen" class="modal-overlay fade-in" @click="$emit('close')">
       <div class="modal-card glass-panel" @click.stop>
         <div class="modal-header">
-          <h2>Create Workspace</h2>
+          <div class="header-title-wrap">
+            <div class="header-icon">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="3"></circle>
+                <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+              </svg>
+            </div>
+            <h2>Workspace Settings</h2>
+          </div>
           <button class="close-btn" @click="$emit('close')">
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <line x1="18" y1="6" x2="6" y2="18"></line>
@@ -122,7 +102,7 @@ const handleCreate = async () => {
         </div>
 
         <div class="modal-body">
-          <p class="description">Configure a new AI workspace with custom instructions.</p>
+          <p class="description">Customize this workspace's name and AI instructions for strictly grounded responses.</p>
 
           <div class="form-group">
             <label>Workspace Name</label>
@@ -156,49 +136,18 @@ const handleCreate = async () => {
               v-model="systemPrompt"
               class="input-field textarea-field"
               placeholder="Instruct the AI on how it should behave..."
-              rows="6"
+              rows="7"
             ></textarea>
           </div>
 
-          <!-- Dropzone -->
-          <div class="form-group">
-            <label>Initial Knowledge Base <span class="optional">(Optional)</span></label>
-            <div
-              class="dropzone"
-              :class="{ 'is-dragging': isDragging, 'has-file': selectedFile }"
-              @dragover="handleDragOver"
-              @dragleave="handleDragLeave"
-              @drop="handleDrop"
-              @click="!selectedFile && fileInput?.click()"
-            >
-              <input
-                type="file"
-                ref="fileInput"
-                accept="application/pdf"
-                class="hidden-input"
-                @change="handleFileSelect"
-              />
-
-              <template v-if="!selectedFile">
-                <p>Drag & drop a PDF here or click to browse</p>
-              </template>
-
-              <template v-else>
-                <div class="file-info">
-                  <span class="filename">{{ selectedFile.name }}</span>
-                  <button @click.stop="selectedFile = null" class="remove-file-btn">Remove</button>
-                </div>
-              </template>
-            </div>
-          </div>
-
           <div v-if="errorMsg" class="error-toast fade-in">{{ errorMsg }}</div>
+          <div v-if="successMsg" class="success-toast fade-in">{{ successMsg }}</div>
         </div>
 
         <div class="modal-footer">
-          <button class="btn-secondary" @click="$emit('close')" :disabled="isCreating">Cancel</button>
-          <button class="btn-primary" @click="handleCreate" :disabled="isCreating">
-            {{ isCreating ? 'Creating...' : 'Create Workspace' }}
+          <button class="btn-secondary" @click="$emit('close')" :disabled="isSaving">Cancel</button>
+          <button class="btn-primary" @click="handleSave" :disabled="isSaving">
+            {{ isSaving ? 'Saving...' : 'Save Changes' }}
           </button>
         </div>
       </div>
@@ -210,7 +159,7 @@ const handleCreate = async () => {
 .modal-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(15, 23, 42, 0.6); /* Slate overlay */
+  background: rgba(15, 23, 42, 0.65);
   backdrop-filter: blur(4px);
   -webkit-backdrop-filter: blur(4px);
   z-index: 100;
@@ -225,7 +174,7 @@ const handleCreate = async () => {
   max-width: 520px;
   max-height: 90vh;
   max-height: 90dvh;
-  border-radius: 12px;
+  border-radius: 14px;
   background: var(--bg-panel);
   display: flex;
   flex-direction: column;
@@ -249,10 +198,28 @@ const handleCreate = async () => {
   flex-shrink: 0;
 }
 
+.header-title-wrap {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.header-icon {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  background: rgba(139, 92, 246, 0.15);
+  color: var(--accent-primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
 .modal-header h2 {
-  font-size: 1.25rem;
+  font-size: 1.2rem;
   font-weight: 700;
   color: var(--text-primary);
+  margin: 0;
 }
 
 .close-btn {
@@ -278,29 +245,13 @@ const handleCreate = async () => {
 
 .description {
   color: var(--text-secondary);
-  font-size: 0.95rem;
+  font-size: 0.9rem;
   margin-bottom: var(--space-5);
-}
-
-@media (max-width: 480px) {
-  .modal-overlay {
-    padding: var(--space-2);
-  }
-
-  .modal-header,
-  .modal-body,
-  .modal-footer {
-    padding-left: var(--space-4);
-    padding-right: var(--space-4);
-  }
-
-  .filename {
-    max-width: 160px;
-  }
+  line-height: 1.4;
 }
 
 .form-group {
-  margin-bottom: var(--space-4);
+  margin-bottom: var(--space-5);
   display: flex;
   flex-direction: column;
   gap: var(--space-2);
@@ -358,71 +309,12 @@ const handleCreate = async () => {
   margin-bottom: 2px;
 }
 
-.optional {
-  color: var(--text-muted);
-  font-weight: 400;
-  font-size: 0.8rem;
-}
-
 .textarea-field {
   resize: vertical;
-  min-height: 120px;
+  min-height: 140px;
   font-size: 0.85rem;
   line-height: 1.5;
   font-family: inherit;
-}
-
-.dropzone {
-  border: 2px dashed var(--border-strong);
-  border-radius: 8px;
-  padding: var(--space-4);
-  text-align: center;
-  cursor: pointer;
-  transition: all var(--transition-fast);
-  background: var(--bg-panel-light);
-  color: var(--text-muted);
-  font-size: 0.9rem;
-}
-
-.dropzone:hover, .dropzone.is-dragging {
-  border-color: var(--accent-primary);
-  background: rgba(79, 70, 229, 0.05); /* Soft indigo tint */
-  color: var(--accent-primary);
-}
-
-.dropzone.has-file {
-  border-style: solid;
-  border-color: var(--border-strong);
-  background: var(--bg-panel);
-  cursor: default;
-}
-
-.hidden-input {
-  display: none;
-}
-
-.file-info {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.filename {
-  font-weight: 500;
-  color: var(--text-primary);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  max-width: 250px;
-}
-
-.remove-file-btn {
-  background: transparent;
-  border: none;
-  color: var(--accent-error);
-  cursor: pointer;
-  font-size: 0.85rem;
-  font-weight: 500;
 }
 
 .error-toast {
@@ -432,7 +324,18 @@ const handleCreate = async () => {
   border-radius: 6px;
   border: 1px solid rgba(239, 68, 68, 0.3);
   margin-top: var(--space-4);
-  font-size: 0.9rem;
+  font-size: 0.85rem;
+  text-align: center;
+}
+
+.success-toast {
+  background: rgba(16, 185, 129, 0.1);
+  color: #10b981;
+  padding: var(--space-3);
+  border-radius: 6px;
+  border: 1px solid rgba(16, 185, 129, 0.3);
+  margin-top: var(--space-4);
+  font-size: 0.85rem;
   text-align: center;
 }
 
@@ -443,6 +346,19 @@ const handleCreate = async () => {
   justify-content: flex-end;
   gap: var(--space-3);
   background: rgba(0, 0, 0, 0.2);
-  border-radius: 0 0 12px 12px;
+  border-radius: 0 0 14px 14px;
+}
+
+@media (max-width: 480px) {
+  .modal-overlay {
+    padding: var(--space-2);
+  }
+
+  .modal-header,
+  .modal-body,
+  .modal-footer {
+    padding-left: var(--space-4);
+    padding-right: var(--space-4);
+  }
 }
 </style>

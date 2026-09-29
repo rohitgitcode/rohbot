@@ -7,6 +7,7 @@ import KnowledgeBaseDrawer from './components/ui/KnowledgeBaseDrawer.vue'
 import WidgetEmbedModal from './components/ui/WidgetEmbedModal.vue'
 import LoginModal from './components/ui/LoginModal.vue'
 import CreateBotModal from './components/ui/CreateBotModal.vue'
+import EditBotModal from './components/ui/EditBotModal.vue'
 import ProductTour from './components/ui/ProductTour.vue'
 import HomePage from './components/layout/HomePage.vue'
 import { useTheme } from './composables/useTheme'
@@ -17,6 +18,7 @@ const { isDark } = useTheme() // Initializes theme on mount
 const isUploadModalOpen = ref(false)
 const isEmbedModalOpen = ref(false)
 const isCreateModalOpen = ref(false)
+const isEditModalOpen = ref(false)
 const isLoginModalOpen = ref(false)
 const loginMode = ref(true)
 
@@ -92,10 +94,14 @@ const openLogin = (isLogin: boolean) => {
         aria-hidden="true"
       ></div>
 
-      <Sidebar @openCreate="isCreateModalOpen = true" />
+      <Sidebar 
+        @openCreate="isCreateModalOpen = true" 
+        @openEdit="isEditModalOpen = true"
+      />
       <MainChat 
         @openUpload="isUploadModalOpen = true" 
         @openEmbed="isEmbedModalOpen = true" 
+        @openEdit="isEditModalOpen = true"
       />
       <KnowledgeBaseDrawer 
         :isOpen="isUploadModalOpen" 
@@ -108,6 +114,10 @@ const openLogin = (isLogin: boolean) => {
       <CreateBotModal 
         :isOpen="isCreateModalOpen" 
         @close="isCreateModalOpen = false" 
+      />
+      <EditBotModal
+        :isOpen="isEditModalOpen"
+        @close="isEditModalOpen = false"
       />
       <ProductTour
         :isOpen="chatStore.isTourOpen"

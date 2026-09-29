@@ -9,6 +9,7 @@ const customBotId = ref('')
 
 const emit = defineEmits<{
   (e: 'openCreate'): void
+  (e: 'openEdit'): void
 }>()
 
 const handleSelectBot = (botId: string) => {
@@ -110,6 +111,12 @@ const handleBulkDelete = async () => {
       <div class="bot-switcher-header">
         <label>Workspace</label>
         <div class="bot-actions">
+          <button v-if="chatStore.activeBotId && chatStore.activeBotId !== 'custom'" @click="$emit('openEdit'); chatStore.closeSidebar()" class="action-btn edit-bot-btn" title="Edit Workspace Prompt & Settings">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M12 20h9"></path>
+              <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path>
+            </svg>
+          </button>
           <button v-if="chatStore.activeBotId && chatStore.activeBotId !== 'custom'" @click="handleDeleteWorkspace" class="action-btn delete-bot-btn" title="Delete Workspace">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
               <polyline points="3 6 5 6 21 6"></polyline>

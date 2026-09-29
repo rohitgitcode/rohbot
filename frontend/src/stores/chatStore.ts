@@ -227,6 +227,35 @@ export const useChatStore = defineStore('chat', () => {
     }
   }
 
+  const updateBot = async (botId: string, payload: { name?: string; systemPrompt?: string }) => {
+    if (!isAuthenticated.value || !botId) return false
+    try {
+      const res = await fetch(`${API_BASE}/api/bots/${botId}`, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${token.value}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(payload)
+      })
+      if (res.ok) {
+        const data = await res.json()
+        const updatedBot = data.data?.bot
+        if (updatedBot && updatedBot._id) {
+          const index = bots.value.findIndex(b => b._id === botId)
+          if (index !== -1) {
+            bots.value[index] = { ...bots.value[index], ...updatedBot }
+          }
+          return true
+        }
+      }
+      return false
+    } catch (e) {
+      console.error('Failed to update bot:', e)
+      return false
+    }
+  }
+
   const fetchDocuments = async (botId: string) => {
     if (!isAuthenticated.value || !botId) return
     try {
@@ -544,6 +573,7 @@ export const useChatStore = defineStore('chat', () => {
     logout,
     fetchBots,
     createBot,
+    updateBot,
     fetchDocuments,
     fetchChatHistory,
     switchWorkspace,

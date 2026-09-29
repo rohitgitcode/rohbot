@@ -1,6 +1,7 @@
 import Bot from '../models/Bot.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
 import { ApiError } from '../utils/ApiError.js';
+import { DEFAULT_SYSTEM_PROMPT } from '../constants/prompts.js';
 
 // 1. Create a New Bot 
 export const createBot = asyncHandler(async (req, res) => {
@@ -9,7 +10,7 @@ export const createBot = asyncHandler(async (req, res) => {
   const bot = await Bot.create({
     userId: req.user._id, // Auth middleware se logged-in user ki ID
     name: name || 'My Custom Assistant',
-    systemPrompt,
+    systemPrompt: (systemPrompt && systemPrompt.trim()) ? systemPrompt.trim() : DEFAULT_SYSTEM_PROMPT,
     appearance,
     allowedDomains, 
   }); 
@@ -54,9 +55,18 @@ export const getBotById = asyncHandler(async (req, res) => {
 export const updateBot = asyncHandler(async (req, res) => {
   const { name, systemPrompt, appearance, allowedDomains, isActive } = req.body;
 
+  const updateFields = {};
+  if (name !== undefined) updateFields.name = name;
+  if (systemPrompt !== undefined) {
+    updateFields.systemPrompt = systemPrompt.trim() ? systemPrompt.trim() : DEFAULT_SYSTEM_PROMPT;
+  }
+  if (appearance !== undefined) updateFields.appearance = appearance;
+  if (allowedDomains !== undefined) updateFields.allowedDomains = allowedDomains;
+  if (isActive !== undefined) updateFields.isActive = isActive;
+
   const bot = await Bot.findOneAndUpdate(
     { _id: req.params.id, userId: req.user._id },
-    { name, systemPrompt, appearance, allowedDomains, isActive },
+    updateFields,
     { new: true, runValidators: true }
   );
 

@@ -1,4 +1,5 @@
 import mongoose from 'mongoose';
+import { DEFAULT_SYSTEM_PROMPT } from '../constants/prompts.js';
 
 const botSchema = new mongoose.Schema(
   {
@@ -19,7 +20,7 @@ const botSchema = new mongoose.Schema(
     },
     systemPrompt: {
       type: String,
-      default: 'You are a helpful customer support assistant. Answer queries concisely based strictly on the provided context.',
+      default: DEFAULT_SYSTEM_PROMPT,
     },
 
     // 3. Widget Appearance (Frontend UI)

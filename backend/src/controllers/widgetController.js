@@ -4,6 +4,7 @@ import { isGibberish } from '../utils/inputValidator.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
 import { ApiError } from '../utils/ApiError.js';
 import { createChatCompletionWithFallback } from '../utils/groqHelper.js';
+import { DEFAULT_SYSTEM_PROMPT } from '../constants/prompts.js';
 
 /**
  * Utility function to scrub any leaked reasoning blocks, internal logs, or thinking headers.
@@ -112,15 +113,15 @@ export const publicChat = asyncHandler(async (req, res) => {
         }
     }
 
-    const botInstruction = bot.systemPrompt || 'You are a helpful assistant.';
+    const botInstruction = bot.systemPrompt || DEFAULT_SYSTEM_PROMPT;
 
     // 5. Build Guardrailed System Prompt
     const systemPrompt = isGreeting
-        ? `${botInstruction}\n\nThe user is greeting you or making casual conversation. Respond politely, naturally, and concisely. Do not complain about missing documents.`
+        ? `${botInstruction}\n\nNote: The user is greeting you or making casual conversation. Respond politely, naturally, and concisely, while indicating readiness to assist with questions about the workspace documents and resources.`
         : `
 ${botInstruction}
 
-You are a strict Document Grounded Assistant. Your primary knowledge base is provided in the "Relevant Knowledge Base Context" block below.
+You are an advanced, intelligent AI Assistant. Your primary knowledge base is provided in the "Relevant Knowledge Base Context" block below.
 
 Relevant Knowledge Base Context:
 ${retrievedContext ? retrievedContext : 'NO_CONTEXT_FOUND'}
@@ -129,11 +130,11 @@ CRITICAL OUTPUT & FORMATTING RULES:
 1. DIRECT FINAL RESPONSE ONLY: NEVER include your internal thinking process, chain-of-thought, self-corrections, or analysis in your reply.
 2. NO THINKING HEADERS: NEVER write headers like "Thinking Process:", "Self-Correction:", "Excerpt 1:", or "Drafting Response:".
 3. NO REASONING TAGS: Do NOT wrap any text inside <think> or <reasoning> tags.
-4. STRICT RAG GROUNDING:
+4. STRICT RAG GROUNDING & ANTI-HALLUCINATION:
    - You MUST ONLY answer questions using the explicit facts and information provided in the "Relevant Knowledge Base Context" above.
-   - If the user's question cannot be directly answered using ONLY the context provided above (or if context is NO_CONTEXT_FOUND), you MUST politely refuse to answer using exactly this response:
-     "I am sorry, but I don't have information about that in the uploaded document knowledge base."
-   - DO NOT use your general pre-trained knowledge or external facts to answer questions outside the context.
+   - If the user's question cannot be directly answered using ONLY the context provided above (or if context is NO_CONTEXT_FOUND), you MUST politely refuse to answer using this response:
+     "I'm sorry, but I don't have information about that in the provided documents or website links."
+   - DO NOT fabricate, guess, extrapolate, or hallucinate answers outside the context.
 5. RAG & OUTLINE HANDLING:
    - If the user asks for detailed explanations, but the retrieved context only contains section titles, indexes, or table-of-contents headings:
      a. List the relevant section headings found in the context clearly.
@@ -164,6 +165,7 @@ CRITICAL OUTPUT & FORMATTING RULES:
     const chatCompletion = await createChatCompletionWithFallback({
         messages: apiMessages,
         maxTokens: 800,
+        temperature: 0.2,
     });
 
     const rawAiResponse = chatCompletion.choices[0]?.message?.content || '';

@@ -390,7 +390,7 @@ export const useChatStore = defineStore('chat', () => {
     }
   }
 
-  const uploadPdf = async (file: File, botId: string) => {
+  const uploadDocument = async (file: File, botId: string) => {
     if (!isAuthenticated.value) return false
     try {
       const formData = new FormData()
@@ -419,6 +419,10 @@ export const useChatStore = defineStore('chat', () => {
       console.error('Failed to upload document:', e)
       return false
     }
+  }
+
+  const uploadPdf = async (file: File, botId: string) => {
+    return await uploadDocument(file, botId)
   }
 
   const ingestUrl = async (url: string, botId: string) => {
@@ -580,6 +584,7 @@ export const useChatStore = defineStore('chat', () => {
     startNewChat,
     loadChat,
     sendMessage,
+    uploadDocument,
     uploadPdf,
     ingestUrl,
     deleteDocument,

@@ -25,6 +25,7 @@
     "express-rate-limit": "^8.6.2",
     "groq-sdk": "^1.5.0",
     "jsonwebtoken": "^9.0.3",
+    "mammoth": "^1.13.0",
     "mongoose": "^9.9.1",
     "multer": "^2.2.0",
     "pdf-image": "^2.0.0",
@@ -33,6 +34,7 @@
     "pdf2image": "^1.2.3",
     "unpdf": "^1.8.0",
     "uuid": "^14.0.1",
+    "xlsx": "^0.18.5",
     "zod": "^4.4.3"
   },
   "devDependencies": {

@@ -13,9 +13,9 @@ const emit = defineEmits<{
 const chatStore = useChatStore()
 
 // Tabs
-const activeTab = ref<'pdf' | 'url'>('pdf')
+const activeTab = ref<'file' | 'url'>('file')
 
-// PDF State
+// Document State
 const isDragging = ref(false)
 const selectedFile = ref<File | null>(null)
 
@@ -28,19 +28,21 @@ const uploadProgress = ref(0)
 const uploadSuccess = ref(false)
 const errorMsg = ref('')
 
+const SUPPORTED_EXTENSIONS = ['.pdf', '.docx', '.txt', '.csv', '.xlsx', '.md']
+
 const handleDragOver = (e: DragEvent) => {
-  if (activeTab.value !== 'pdf') return
+  if (activeTab.value !== 'file') return
   e.preventDefault()
   isDragging.value = true
 }
 
 const handleDragLeave = () => {
-  if (activeTab.value !== 'pdf') return
+  if (activeTab.value !== 'file') return
   isDragging.value = false
 }
 
 const handleDrop = (e: DragEvent) => {
-  if (activeTab.value !== 'pdf') return
+  if (activeTab.value !== 'file') return
   e.preventDefault()
   isDragging.value = false
   if (e.dataTransfer?.files && e.dataTransfer.files.length > 0) {
@@ -63,12 +65,14 @@ const handleFileSelect = (e: Event) => {
 
 const validateAndSetFile = (file: File) => {
   errorMsg.value = ''
-  if (file.type !== 'application/pdf') {
-    errorMsg.value = 'Only PDF files are supported.'
+  const name = file.name.toLowerCase()
+  const isSupported = SUPPORTED_EXTENSIONS.some(ext => name.endsWith(ext))
+  if (!isSupported) {
+    errorMsg.value = 'Unsupported format. Supported: .pdf, .docx, .txt, .csv, .xlsx, .md'
     return
   }
-  if (file.size > 13 * 1024 * 1024) { // 10MB limit for demo
-    errorMsg.value = 'File size must be under 13MB.'
+  if (file.size > 15 * 1024 * 1024) {
+    errorMsg.value = 'File size must be under 15MB.'
     return
   }
   selectedFile.value = file
@@ -96,7 +100,7 @@ const handleClose = () => {
   emit('close')
 }
 
-const handleUploadPdf = async () => {
+const handleUploadDocument = async () => {
   if (!selectedFile.value) return
   
   const botId = chatStore.activeBotId
@@ -117,7 +121,7 @@ const handleUploadPdf = async () => {
   }, 300)
 
   try {
-    const success = await chatStore.uploadPdf(selectedFile.value, botId)
+    const success = await chatStore.uploadDocument(selectedFile.value, botId)
     clearInterval(progressInterval)
     
     if (success) {
@@ -208,11 +212,23 @@ const handleIngestUrl = async () => {
                   <template v-if="doc.fileType === 'url'">
                     <span class="badge url-badge">🌐 Link</span>
                   </template>
+                  <template v-else-if="doc.fileType === 'docx'">
+                    <span class="badge docx-badge">DOCX</span>
+                  </template>
+                  <template v-else-if="doc.fileType === 'xlsx'">
+                    <span class="badge xlsx-badge">XLSX</span>
+                  </template>
+                  <template v-else-if="doc.fileType === 'csv'">
+                    <span class="badge csv-badge">CSV</span>
+                  </template>
+                  <template v-else-if="doc.fileType === 'md'">
+                    <span class="badge md-badge">MD</span>
+                  </template>
+                  <template v-else-if="doc.fileType === 'txt'">
+                    <span class="badge txt-badge">TXT</span>
+                  </template>
                   <template v-else>
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
-                      <polyline points="14 2 14 8 20 8"></polyline>
-                    </svg>
+                    <span class="badge pdf-badge">PDF</span>
                   </template>
                 </div>
                 <div class="doc-details">
@@ -243,10 +259,10 @@ const handleIngestUrl = async () => {
           <div class="tabs">
             <button 
               class="tab-btn" 
-              :class="{ active: activeTab === 'pdf' }" 
-              @click="activeTab = 'pdf'; errorMsg = ''"
+              :class="{ active: activeTab === 'file' }" 
+              @click="activeTab = 'file'; errorMsg = ''"
             >
-              Upload PDF
+              Upload Document
             </button>
             <button 
               class="tab-btn" 
@@ -258,8 +274,8 @@ const handleIngestUrl = async () => {
           </div>
 
           <template v-if="!uploadSuccess">
-            <!-- PDF Upload Tab -->
-            <template v-if="activeTab === 'pdf'">
+            <!-- Document Upload Tab -->
+            <template v-if="activeTab === 'file'">
               <div 
                 class="dropzone"
                 :class="{ 'is-dragging': isDragging, 'has-file': selectedFile }"
@@ -271,7 +287,7 @@ const handleIngestUrl = async () => {
                 <input 
                   type="file" 
                   ref="fileInput" 
-                  accept="application/pdf" 
+                  accept=".pdf,.docx,.txt,.csv,.xlsx,.md,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,text/markdown" 
                   class="hidden-input"
                   @change="handleFileSelect"
                 />
@@ -283,8 +299,8 @@ const handleIngestUrl = async () => {
                     <line x1="12" y1="18" x2="12" y2="12"></line>
                     <line x1="9" y1="15" x2="15" y2="15"></line>
                   </svg>
-                  <p>Drag & drop a PDF here</p>
-                  <p class="sub-text">or click to browse</p>
+                  <p>Drag & drop a document here</p>
+                  <p class="sub-text">Supports PDF, DOCX, TXT, CSV, XLSX, MD (up to 15MB)</p>
                 </template>
                 
                 <template v-else>
@@ -316,7 +332,7 @@ const handleIngestUrl = async () => {
               <button 
                 class="btn-primary upload-submit-btn" 
                 :disabled="!selectedFile || isUploading"
-                @click="handleUploadPdf"
+                @click="handleUploadDocument"
               >
                 {{ isUploading ? 'Processing...' : 'Upload & Embed' }}
               </button>
@@ -510,9 +526,33 @@ const handleIngestUrl = async () => {
 }
 
 .url-badge {
-  background: rgba(16, 185, 129, 0.1);
+  background: rgba(6, 182, 212, 0.12);
+  color: #06b6d4;
+  border: 1px solid rgba(6, 182, 212, 0.25);
+}
+
+.pdf-badge {
+  background: rgba(239, 68, 68, 0.12);
+  color: #ef4444;
+  border: 1px solid rgba(239, 68, 68, 0.25);
+}
+
+.docx-badge {
+  background: rgba(59, 130, 246, 0.12);
+  color: #3b82f6;
+  border: 1px solid rgba(59, 130, 246, 0.25);
+}
+
+.xlsx-badge, .csv-badge {
+  background: rgba(16, 185, 129, 0.12);
   color: #10b981;
-  border: 1px solid rgba(16, 185, 129, 0.2);
+  border: 1px solid rgba(16, 185, 129, 0.25);
+}
+
+.md-badge, .txt-badge {
+  background: rgba(139, 92, 246, 0.12);
+  color: #a78bfa;
+  border: 1px solid rgba(139, 92, 246, 0.25);
 }
 
 .doc-details {

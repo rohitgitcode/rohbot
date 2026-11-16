@@ -19,8 +19,8 @@ const copySnippet = () => {
     <div class="integrations-grid">
       <div class="integ-card glass-panel">
         <div class="integ-icon">📄</div>
-        <h4>Multimodal Documents</h4>
-        <p>Upload PDF documents with complex tables and diagrams. Our OCR pipeline extracts structured markdown automatically.</p>
+        <h4>Multi-Format Documents</h4>
+        <p>Upload PDF, Word (.docx), Excel (.xlsx), CSV, Markdown (.md), and TXT files. Automated OCR & extraction pipeline extracts structured data.</p>
       </div>
 
       <div class="integ-card glass-panel">

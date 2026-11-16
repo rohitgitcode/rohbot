@@ -59,7 +59,7 @@
 
 import Document from '../models/Document.js';
 import { processAndEmbedDocument, deleteDocumentVectors } from '../services/ragService.js';
-import { parsePdfMultimodal } from '../services/pdfParserService.js';
+import { parseDocument, getFileTypeFromFilename, SUPPORTED_FILE_EXTENSIONS } from '../services/documentParserService.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
 import { ApiError } from '../utils/ApiError.js';
 import mongoose from 'mongoose';
@@ -81,40 +81,54 @@ export const uploadDocument = asyncHandler(async (req, res) => {
     throw new ApiError(400, 'Valid 24-character MongoDB Bot ID is required');
   }
 
+  const fileType = getFileTypeFromFilename(file.originalname);
+  if (!fileType) {
+    throw new ApiError(
+      400,
+      `Unsupported file type. Supported formats are: ${SUPPORTED_FILE_EXTENSIONS.map(ext => `.${ext}`).join(', ')}`
+    );
+  }
+
   // 2. Save Initial Document Record in MongoDB
   const document = await Document.create({
     botId,
     userId: req.user?._id || botId,
     filename: file.originalname,
-    fileType: file.originalname.toLowerCase().endsWith('.pdf') ? 'pdf' : 'txt',
+    fileType,
     status: 'processing',
   });
 
-  // 3. Process Text & Push Embeddings to Qdrant
-  let extractedText = '';
-  if (document.fileType === 'pdf') {
-    extractedText = await parsePdfMultimodal(file.buffer);
-  } else {
-    extractedText = file.buffer.toString('utf-8');
+  try {
+    // 3. Process Text & Push Embeddings to Qdrant
+    const extractedText = await parseDocument(file.buffer, fileType);
+
+    if (!extractedText || !extractedText.trim()) {
+      throw new Error('No readable text content found in document');
+    }
+
+    const { characterCount, chunkCount } = await processAndEmbedDocument({
+      extractedText,
+      botId,
+      documentId: document._id,
+    });
+
+    // 4. Update Document Status to 'ready'
+    document.characterCount = characterCount;
+    document.chunkCount = chunkCount;
+    document.status = 'ready';
+    await document.save();
+
+    return res.status(201).json({
+      success: true,
+      message: 'Document uploaded and embedded into Knowledge Base successfully!',
+      data: { document },
+    });
+  } catch (error) {
+    document.status = 'failed';
+    document.errorMessage = error.message;
+    await document.save();
+    throw error;
   }
-
-  const { characterCount, chunkCount } = await processAndEmbedDocument({
-    extractedText,
-    botId,
-    documentId: document._id,
-  });
-
-  // 4. Update Document Status to 'ready'
-  document.characterCount = characterCount;
-  document.chunkCount = chunkCount;
-  document.status = 'ready';
-  await document.save();
-
-  return res.status(201).json({
-    success: true,
-    message: 'Document uploaded and embedded into Knowledge Base successfully!',
-    data: { document },
-  });
 });
 
 // ===================================================

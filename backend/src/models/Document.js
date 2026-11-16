@@ -20,7 +20,7 @@ const documentSchema = new mongoose.Schema(
     },
     fileType: {
       type: String,
-      enum: ['pdf', 'txt', 'faq', 'url'],
+      enum: ['pdf', 'docx', 'csv', 'xlsx', 'txt', 'md', 'faq', 'url'],
       default: 'pdf',
     },
     sourceUrl: {

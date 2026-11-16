@@ -43,15 +43,22 @@ const handleDragLeave = () => {
   isDragging.value = false
 }
 
+const SUPPORTED_EXTENSIONS = ['.pdf', '.docx', '.txt', '.csv', '.xlsx', '.md']
+
+const isSupportedFile = (file: File) => {
+  const name = file.name.toLowerCase()
+  return SUPPORTED_EXTENSIONS.some(ext => name.endsWith(ext))
+}
+
 const handleDrop = (e: DragEvent) => {
   e.preventDefault()
   isDragging.value = false
   const file = e.dataTransfer?.files?.[0]
   if (file) {
-    if (file.type === 'application/pdf' || file.name.endsWith('.pdf')) {
+    if (isSupportedFile(file)) {
       selectedFile.value = file
     } else {
-      errorMsg.value = 'Only PDF files are currently supported.'
+      errorMsg.value = 'Supported formats: .pdf, .docx, .txt, .csv, .xlsx, .md'
     }
   }
 }
@@ -60,7 +67,11 @@ const handleFileSelect = (e: Event) => {
   const target = e.target as HTMLInputElement
   const file = target.files?.[0]
   if (file) {
-    selectedFile.value = file
+    if (isSupportedFile(file)) {
+      selectedFile.value = file
+    } else {
+      errorMsg.value = 'Supported formats: .pdf, .docx, .txt, .csv, .xlsx, .md'
+    }
   }
 }
 
@@ -83,8 +94,8 @@ const handleCreate = async () => {
     if (newBotId) {
       if (selectedFile.value) {
         isCreating.value = true
-        // Upload the PDF to the new bot
-        const uploadSuccess = await chatStore.uploadPdf(selectedFile.value, newBotId)
+        // Upload the document to the new bot
+        const uploadSuccess = await chatStore.uploadDocument(selectedFile.value, newBotId)
         if (!uploadSuccess) {
           errorMsg.value = 'Workspace created, but failed to upload document.'
           return // Don't close modal if upload failed, so user can see it
@@ -174,13 +185,14 @@ const handleCreate = async () => {
               <input
                 type="file"
                 ref="fileInput"
-                accept="application/pdf"
+                accept=".pdf,.docx,.txt,.csv,.xlsx,.md,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,text/markdown"
                 class="hidden-input"
                 @change="handleFileSelect"
               />
 
               <template v-if="!selectedFile">
-                <p>Drag & drop a PDF here or click to browse</p>
+                <p>Drag & drop a file here or click to browse</p>
+                <span class="sub-format-hint">Supports PDF, DOCX, TXT, CSV, XLSX, MD</span>
               </template>
 
               <template v-else>
@@ -382,6 +394,16 @@ const handleCreate = async () => {
   background: var(--bg-panel-light);
   color: var(--text-muted);
   font-size: 0.9rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+.sub-format-hint {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  opacity: 0.8;
 }
 
 .dropzone:hover, .dropzone.is-dragging {

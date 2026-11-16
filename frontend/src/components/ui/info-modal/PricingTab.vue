@@ -25,7 +25,7 @@ const emit = defineEmits<{
         <ul class="price-features">
           <li><span class="check">✓</span> 1 Custom AI Bot</li>
           <li><span class="check">✓</span> 50 MB Document Storage</li>
-          <li><span class="check">✓</span> PDF & Web URL Ingestion</li>
+          <li><span class="check">✓</span> Multi-Format Docs (PDF, DOCX, XLSX, CSV, TXT, MD) & URLs</li>
           <li><span class="check">✓</span> Standard Qdrant Vector Index</li>
           <li><span class="check">✓</span> 1-Click Embed Widget</li>
         </ul>

@@ -84,7 +84,7 @@ const handleBulkDelete = async () => {
 </script>
 
 <template>
-  <aside class="sidebar glass-panel" :class="{ 'is-mobile-open': chatStore.isMobileSidebarOpen }">
+  <aside class="sidebar glass-panel" :class="{ 'is-mobile-open': chatStore.isMobileSidebarOpen, 'has-demo-banner': chatStore.isDemoMode }">
     <!-- Brand Header -->
     <div class="brand-header">
       <div class="logo">
@@ -110,7 +110,7 @@ const handleBulkDelete = async () => {
     <div class="bot-switcher" data-tour="bot-switcher">
       <div class="bot-switcher-header">
         <label>Workspace</label>
-        <div class="bot-actions">
+        <div v-if="!chatStore.isDemoMode" class="bot-actions">
           <button v-if="chatStore.activeBotId && chatStore.activeBotId !== 'custom'" @click="$emit('openEdit'); chatStore.closeSidebar()" class="action-btn edit-bot-btn" title="Edit Workspace Prompt & Settings">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
               <path d="M12 20h9"></path>
@@ -140,7 +140,7 @@ const handleBulkDelete = async () => {
           <option v-for="bot in chatStore.bots" :key="bot._id" :value="bot._id">
             {{ bot.name }}
           </option>
-          <option value="custom">Connect Custom Engine...</option>
+          <option v-if="!chatStore.isDemoMode" value="custom">Connect Custom Engine...</option>
         </select>
       </div>
 
@@ -158,12 +158,12 @@ const handleBulkDelete = async () => {
     </div>
 
     <!-- New Chat Button -->
-    <button @click="chatStore.startNewChat" class="btn-primary new-chat-btn" data-tour="new-thread">
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <button v-if="!chatStore.isDemoMode" @click="chatStore.startNewChat" class="new-chat-btn" data-tour="new-thread">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
         <line x1="12" y1="5" x2="12" y2="19"></line>
         <line x1="5" y1="12" x2="19" y2="12"></line>
       </svg>
-      New Thread
+      <span>New Thread</span>
     </button>
 
     <!-- Chat History -->
@@ -171,7 +171,7 @@ const handleBulkDelete = async () => {
       <div class="history-header">
         <h3 class="history-title">Recent Activity</h3>
         <button 
-          v-if="chatStore.chatHistory.length > 0" 
+          v-if="chatStore.chatHistory.length > 0 && !chatStore.isDemoMode" 
           @click="toggleSelectMode" 
           class="edit-mode-btn"
           :class="{ active: isSelectMode }"
@@ -239,7 +239,7 @@ const handleBulkDelete = async () => {
             <span class="chat-title">{{ chat.title || 'New Conversation' }}</span>
           </div>
           <button 
-            v-if="!isSelectMode"
+            v-if="!isSelectMode && !chatStore.isDemoMode"
             @click.stop="handleDeleteThread(chat._id)" 
             class="delete-thread-btn" 
             title="Delete conversation"
@@ -254,7 +254,7 @@ const handleBulkDelete = async () => {
     </div>
 
     <!-- User Profile Footer -->
-    <div class="user-footer" data-tour="user-footer">
+    <div v-if="!chatStore.isDemoMode" class="user-footer" data-tour="user-footer">
       <div class="user-info">
         <div class="avatar user-avatar">
           <span class="user-monogram">{{ (chatStore.currentUser?.name?.[0] || 'D').toUpperCase() }}</span>
@@ -280,6 +280,25 @@ const handleBulkDelete = async () => {
             <line x1="21" y1="12" x2="9" y2="12"></line>
           </svg>
         </button>
+      </div>
+    </div>
+
+    <!-- Demo Footer -->
+    <div v-else class="user-footer demo-footer">
+      <div class="user-info">
+        <div class="avatar user-avatar demo-avatar">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="10"></circle>
+            <polygon points="10 8 16 12 10 16 10 8"></polygon>
+          </svg>
+        </div>
+        <div class="user-details">
+          <span class="user-name">Demo Viewer</span>
+          <span class="user-role">Exploring RohBot</span>
+        </div>
+      </div>
+      <div class="user-footer-actions">
+        <ThemeToggle />
       </div>
     </div>
     
@@ -362,7 +381,7 @@ const handleBulkDelete = async () => {
 }
 
 .bot-switcher {
-  margin-bottom: var(--space-6);
+  margin-bottom: var(--space-3);
   display: flex;
   flex-direction: column;
   gap: var(--space-2);
@@ -438,7 +457,23 @@ const handleBulkDelete = async () => {
   justify-content: center;
   gap: var(--space-2);
   width: 100%;
-  margin-bottom: var(--space-6);
+  margin-bottom: var(--space-3);
+  padding: 8px 12px;
+  background: var(--bg-panel-light);
+  border: 1px dashed var(--border-strong);
+  border-radius: 8px;
+  color: var(--text-primary);
+  font-weight: 500;
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.new-chat-btn:hover {
+  background: linear-gradient(135deg, rgba(139, 92, 246, 0.15), rgba(6, 182, 212, 0.15));
+  border-color: var(--accent-primary);
+  color: var(--accent-primary);
+  transform: translateY(-1px);
 }
 
 .chat-history {
@@ -446,16 +481,17 @@ const handleBulkDelete = async () => {
   overflow-y: auto;
   display: flex;
   flex-direction: column;
-  gap: var(--space-3);
+  gap: var(--space-2);
 }
 
 .history-title {
-  font-size: 0.75rem;
+  font-size: 0.72rem;
   color: var(--text-muted);
   text-transform: uppercase;
   letter-spacing: 0.5px;
   font-weight: 600;
   padding: 0 var(--space-2);
+  margin-bottom: 2px;
 }
 
 .history-list {
@@ -749,6 +785,37 @@ const handleBulkDelete = async () => {
   color: var(--text-primary);
 }
 
+.history-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-2) var(--space-3);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background var(--transition-fast);
+}
+.history-item:hover {
+  background: var(--bg-panel-light);
+}
+.history-item.active {
+  background: var(--accent-primary);
+  color: white;
+}
+.chat-title {
+  font-weight: 500;
+  margin-left: var(--space-2);
+}
+.delete-thread-btn {
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: color var(--transition-fast);
+}
+.delete-thread-btn:hover {
+  color: var(--accent-primary);
+}
+
 @media (max-width: 768px) {
   .sidebar {
     position: fixed;
@@ -774,5 +841,19 @@ const handleBulkDelete = async () => {
     align-items: center;
     justify-content: center;
   }
+}
+
+.demo-avatar {
+  background: rgba(139, 92, 246, 0.2);
+  color: var(--accent-primary);
+}
+
+.demo-footer {
+  border-top: 1px solid var(--border-light);
+}
+
+.has-demo-banner {
+  padding-top: calc(var(--space-4) + 44px);
+  height: 100vh;
 }
 </style>

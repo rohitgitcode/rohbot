@@ -81,6 +81,14 @@ const openLogin = (isLogin: boolean) => {
   loginMode.value = isLogin
   isLoginModalOpen.value = true
 }
+
+const enterDemo = () => {
+  chatStore.enterDemoMode()
+}
+
+const exitDemo = () => {
+  chatStore.exitDemoMode()
+}
 </script>
 
 <template>
@@ -125,9 +133,34 @@ const openLogin = (isLogin: boolean) => {
         @finish="handleTourFinish"
       />
     </template>
+
+    <template v-else-if="chatStore.isDemoMode">
+      <!-- Demo Mode Banner -->
+      <div class="demo-banner">
+        <div class="demo-banner-content">
+          <span class="demo-badge">🎯 Demo Mode</span>
+          <span class="demo-text">You're exploring RohBot with sample data</span>
+        </div>
+        <div class="demo-banner-actions">
+          <button class="btn-primary btn-sm" @click="exitDemo(); openLogin(false)">Sign Up Free</button>
+          <button class="btn-ghost btn-sm" @click="exitDemo">✕ Exit Demo</button>
+        </div>
+      </div>
+
+      <!-- Mobile sidebar backdrop -->
+      <div 
+        v-if="chatStore.isMobileSidebarOpen" 
+        class="sidebar-backdrop fade-in"
+        @click="chatStore.closeSidebar"
+        aria-hidden="true"
+      ></div>
+
+      <Sidebar />
+      <MainChat :isDemoMode="true" />
+    </template>
     
     <template v-else>
-      <HomePage v-if="!isLoginModalOpen" @open-login="openLogin" />
+      <HomePage v-if="!isLoginModalOpen" @open-login="openLogin" @view-demo="enterDemo" />
       <LoginModal 
         v-else 
         :initial-mode="loginMode"
@@ -149,6 +182,66 @@ const openLogin = (isLogin: boolean) => {
   position: relative;
 }
 
+.demo-banner {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 44px;
+  background: linear-gradient(135deg, #8b5cf6, #06b6d4);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 var(--space-6);
+  z-index: 200;
+  color: white;
+  font-size: 0.85rem;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+}
+
+.demo-banner-content {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.demo-badge {
+  background: rgba(255,255,255,0.2);
+  padding: 2px 10px;
+  border-radius: 12px;
+  font-weight: 700;
+  font-size: 0.8rem;
+}
+
+.demo-text {
+  font-weight: 500;
+}
+
+.demo-banner-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.btn-sm {
+  padding: 4px 14px;
+  font-size: 0.8rem;
+  border-radius: 6px;
+}
+
+.btn-ghost {
+  background: transparent;
+  border: 1px solid rgba(255,255,255,0.4);
+  color: white;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-ghost:hover {
+  background: rgba(255,255,255,0.15);
+  border-color: white;
+}
+
 .sidebar-backdrop {
   display: none;
 }
@@ -162,6 +255,17 @@ const openLogin = (isLogin: boolean) => {
     backdrop-filter: blur(3px);
     -webkit-backdrop-filter: blur(3px);
     z-index: 45;
+  }
+
+  .demo-banner {
+    flex-direction: column;
+    height: auto;
+    padding: 6px var(--space-3);
+    gap: 4px;
+  }
+
+  .demo-text {
+    display: none;
   }
 }
 </style>

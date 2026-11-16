@@ -73,6 +73,59 @@ export const useChatStore = defineStore('chat', () => {
   const currentMessages = ref<ChatMessage[]>([])
 
   const isLoading = ref<boolean>(false)
+  const isDemoMode = ref<boolean>(false)
+
+  const enterDemoMode = () => {
+    isDemoMode.value = true
+    bots.value = [
+      { _id: 'demo-bot-1', name: 'Customer Support Bot', systemPrompt: 'You are a helpful customer support assistant.' },
+      { _id: 'demo-bot-2', name: 'Sales Assistant', systemPrompt: 'You are a knowledgeable sales assistant.' }
+    ]
+    activeBotId.value = 'demo-bot-1'
+    documents.value = [
+      { _id: 'demo-doc-1', filename: 'company-faq.pdf', size: 245000, chunkCount: 42, status: 'processed', createdAt: new Date().toISOString(), fileType: 'pdf' },
+      { _id: 'demo-doc-2', filename: 'product-guide.docx', size: 180000, chunkCount: 31, status: 'processed', createdAt: new Date().toISOString(), fileType: 'docx' }
+    ]
+    chatHistory.value = [
+      { _id: 'demo-chat-1', title: 'Product pricing questions', updatedAt: new Date().toISOString() },
+      { _id: 'demo-chat-2', title: 'Return policy inquiry', updatedAt: new Date(Date.now() - 86400000).toISOString() }
+    ]
+    currentChatId.value = null
+    currentMessages.value = [
+      { role: 'user', content: 'What is your return policy for electronics?' },
+      { role: 'assistant', content: 'Based on our knowledge base, our return policy for electronics allows returns within **30 days** of purchase. Items must be in their original packaging and in working condition.\n\nKey points:\n- **Full refund** within 14 days\n- **Store credit** between 15-30 days\n- **Defective items** can be returned anytime within warranty\n\nWould you like me to look up anything more specific?', hasContext: true },
+      { role: 'user', content: 'What about opened items?' },
+      { role: 'assistant', content: 'Great question! For **opened electronics**:\n\n- A **15% restocking fee** applies for opened, non-defective returns\n- The item must include all original accessories and manuals\n- Software or digital products are **non-refundable** once activated\n\nThis information comes directly from section 4.2 of your uploaded company FAQ document. Let me know if you need any further clarification!', hasContext: true }
+    ]
+  }
+
+  const exitDemoMode = () => {
+    isDemoMode.value = false
+    bots.value = []
+    activeBotId.value = ''
+    documents.value = []
+    chatHistory.value = []
+    currentChatId.value = null
+    currentMessages.value = []
+  }
+
+  const sendDemoMessage = (message: string) => {
+    if (!message.trim()) return
+    currentMessages.value.push({ role: 'user', content: message })
+    isLoading.value = true
+    
+    const responses = [
+      "That's a great question! In this demo, I'm showing you how RohBot responds using your uploaded knowledge base. In a real workspace, I'd search through your documents to give you an accurate, sourced answer.",
+      "I found relevant information in your knowledge base! This is a demo response — when you sign up, your bot will answer based on the actual documents you upload (PDFs, Word docs, websites, and more).",
+      "Based on the documents in this workspace, here's what I found. Note: this is a demo preview. Create your free account to build a custom AI bot trained on your own data!"
+    ]
+    const randomResponse = responses[Math.floor(Math.random() * responses.length)] as string
+
+    setTimeout(() => {
+      currentMessages.value.push({ role: 'assistant', content: randomResponse, hasContext: true })
+      isLoading.value = false
+    }, 1200)
+  }
 
   const openSidebar = () => {
     isMobileSidebarOpen.value = true
@@ -293,8 +346,14 @@ export const useChatStore = defineStore('chat', () => {
     currentChatId.value = null
     currentMessages.value = []
     closeSidebar()
-    await fetchDocuments(botId)
-    await fetchChatHistory(botId)
+    if (!isDemoMode.value) {
+      await fetchDocuments(botId)
+      await fetchChatHistory(botId)
+    }
+    // Ensure there is at least one thread for the workspace
+    if (chatHistory.value.length === 0) {
+      await startNewChat()
+    }
   }
 
   const startNewChat = () => {
@@ -569,6 +628,10 @@ export const useChatStore = defineStore('chat', () => {
     currentChatId,
     currentMessages,
     isLoading,
+    isDemoMode,
+    enterDemoMode,
+    exitDemoMode,
+    sendDemoMessage,
     setToken,
     logout,
     fetchBots,

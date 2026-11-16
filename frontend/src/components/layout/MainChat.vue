@@ -4,6 +4,11 @@ import { useChatStore } from '../../stores/chatStore'
 import MessageBubble from '../chat/MessageBubble.vue'
 
 const chatStore = useChatStore()
+
+const props = defineProps<{
+  isDemoMode?: boolean
+}>()
+
 const emit = defineEmits<{
   (e: 'openUpload'): void
   (e: 'openEmbed'): void
@@ -36,7 +41,11 @@ const handleKeydown = (e: KeyboardEvent) => {
 
 const sendMessage = () => {
   if (!messageInput.value.trim() || chatStore.isLoading) return
-  chatStore.sendMessage(messageInput.value)
+  if (props.isDemoMode) {
+    chatStore.sendDemoMessage(messageInput.value)
+  } else {
+    chatStore.sendMessage(messageInput.value)
+  }
   messageInput.value = ''
   if (textareaRef.value) {
     textareaRef.value.style.height = 'auto'
@@ -56,7 +65,7 @@ watch(() => chatStore.currentMessages.length, () => {
 </script>
 
 <template>
-  <main class="main-chat">
+  <main class="main-chat" :style="isDemoMode ? 'padding-top: 44px' : ''">
     <!-- Header -->
     <header class="chat-header">
       <div class="header-left">
@@ -75,53 +84,36 @@ watch(() => chatStore.currentMessages.length, () => {
 
         <div class="header-info">
           <h2 class="bot-name" :title="activeBotName">{{ activeBotName }}</h2>
-          <div class="status-badges">
-            <span class="badge badge-outline">
-              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
-                <polyline points="22 4 12 14.01 9 11.01"></polyline>
-              </svg>
-              <span class="badge-text">RAG Active</span>
-            </span>
-            <span class="badge badge-solid">
-              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                <ellipse cx="12" cy="5" rx="9" ry="3"></ellipse>
-                <path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"></path>
-                <path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"></path>
-              </svg>
-              <span class="badge-text">Qdrant</span>
-            </span>
-          </div>
         </div>
       </div>
 
-      <div class="header-actions">
+      <div v-if="!isDemoMode" class="header-actions">
         <button 
           v-if="chatStore.activeBotId && chatStore.activeBotId !== 'custom'"
           @click="$emit('openEdit')" 
-          class="btn-secondary settings-btn" 
+          class="header-btn" 
           title="Workspace Prompt & Settings"
         >
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <path d="M12 20h9"></path>
             <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path>
           </svg>
           <span class="btn-label">Settings</span>
         </button>
-        <button @click="$emit('openEmbed')" class="btn-secondary embed-btn" data-tour="embed-btn" title="Embed Widget">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <button @click="$emit('openEmbed')" class="header-btn" data-tour="embed-btn" title="Embed Widget">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <polyline points="16 18 22 12 16 6"></polyline>
             <polyline points="8 6 2 12 8 18"></polyline>
           </svg>
-          <span class="btn-label">Embed Widget</span>
+          <span class="btn-label">Embed</span>
         </button>
-        <button @click="$emit('openUpload')" class="btn-secondary upload-btn" data-tour="upload-btn" title="Upload Document">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <button @click="$emit('openUpload')" class="header-btn header-btn-primary" data-tour="upload-btn" title="Upload Document">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
             <polyline points="17 8 12 3 7 8"></polyline>
             <line x1="12" y1="3" x2="12" y2="15"></line>
           </svg>
-          <span class="btn-label">Upload Document</span>
+          <span class="btn-label">Knowledge Base</span>
         </button>
       </div>
     </header>
@@ -159,7 +151,7 @@ watch(() => chatStore.currentMessages.length, () => {
     <!-- Input Dock -->
     <div class="input-dock-container" data-tour="chat-input">
       <div class="input-wrapper" :class="{ 'is-focused': true }">
-        <button class="attachment-btn" @click="$emit('openUpload')" title="Upload Context Document">
+        <button v-if="!isDemoMode" class="attachment-btn" @click="$emit('openUpload')" title="Upload Context Document">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"></path>
           </svg>
@@ -295,6 +287,47 @@ watch(() => chatStore.currentMessages.length, () => {
   align-items: center;
   gap: var(--space-2);
   font-size: 0.85rem;
+}
+
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.header-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 13px;
+  border-radius: 9px;
+  font-size: 0.82rem;
+  font-weight: 500;
+  background: var(--bg-panel);
+  border: 1px solid var(--border-light);
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+}
+
+.header-btn:hover {
+  background: var(--bg-panel-light);
+  border-color: var(--border-strong);
+  color: var(--text-primary);
+  transform: translateY(-1px);
+}
+
+.header-btn-primary {
+  background: linear-gradient(135deg, rgba(139, 92, 246, 0.15), rgba(6, 182, 212, 0.15));
+  border-color: rgba(139, 92, 246, 0.35);
+  color: var(--text-primary);
+}
+
+.header-btn-primary:hover {
+  background: linear-gradient(135deg, rgba(139, 92, 246, 0.25), rgba(6, 182, 212, 0.25));
+  border-color: var(--accent-primary);
+  box-shadow: 0 2px 8px rgba(139, 92, 246, 0.2);
 }
 
 /* Chat Container */

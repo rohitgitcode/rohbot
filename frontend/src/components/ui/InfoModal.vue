@@ -1,15 +1,11 @@
 <script setup lang="ts">
 import { ref, watch, onMounted, onUnmounted } from 'vue'
-import PricingTab from './info-modal/PricingTab.vue'
 import IntegrationsTab from './info-modal/IntegrationsTab.vue'
 import AboutTab from './info-modal/AboutTab.vue'
-import CareersTab from './info-modal/CareersTab.vue'
-import BlogTab from './info-modal/BlogTab.vue'
-import ContactTab from './info-modal/ContactTab.vue'
 import PrivacyTab from './info-modal/PrivacyTab.vue'
 import TermsTab from './info-modal/TermsTab.vue'
 
-export type InfoModalTab = 'integrations' | 'pricing' | 'about' | 'careers' | 'blog' | 'contact' | 'privacy' | 'terms'
+export type InfoModalTab = 'integrations' | 'about' | 'privacy' | 'terms'
 
 const props = defineProps<{
   isOpen: boolean
@@ -22,7 +18,7 @@ const emit = defineEmits<{
   (e: 'scroll-to-features'): void
 }>()
 
-const currentTab = ref<InfoModalTab>(props.initialTab || 'pricing')
+const currentTab = ref<InfoModalTab>(props.initialTab || 'about')
 
 watch(() => props.initialTab, (newTab) => {
   if (newTab) {
@@ -55,11 +51,7 @@ onUnmounted(() => {
 
 const tabTitles: Record<InfoModalTab, string> = {
   integrations: 'Integrations & Ecosystem',
-  pricing: 'Plans & Pricing',
   about: 'About RohBot AI',
-  careers: 'Careers & Hiring',
-  blog: 'Latest Engineering Updates',
-  contact: 'Contact & Support',
   privacy: 'Privacy Policy',
   terms: 'Terms of Service'
 }
@@ -85,40 +77,16 @@ const tabTitles: Record<InfoModalTab, string> = {
       <!-- Navigation Tabs -->
       <div class="tabs-nav">
         <button 
-          :class="['tab-btn', { active: currentTab === 'pricing' }]"
-          @click="currentTab = 'pricing'"
-        >
-          💎 Pricing
-        </button>
-        <button 
-          :class="['tab-btn', { active: currentTab === 'integrations' }]"
-          @click="currentTab = 'integrations'"
-        >
-          🔌 Integrations
-        </button>
-        <button 
           :class="['tab-btn', { active: currentTab === 'about' }]"
           @click="currentTab = 'about'"
         >
           🏢 About
         </button>
         <button 
-          :class="['tab-btn', { active: currentTab === 'careers' }]"
-          @click="currentTab = 'careers'"
+          :class="['tab-btn', { active: currentTab === 'integrations' }]"
+          @click="currentTab = 'integrations'"
         >
-          💼 Careers <span class="hiring-tag">Hiring</span>
-        </button>
-        <button 
-          :class="['tab-btn', { active: currentTab === 'blog' }]"
-          @click="currentTab = 'blog'"
-        >
-          📰 Blog
-        </button>
-        <button 
-          :class="['tab-btn', { active: currentTab === 'contact' }]"
-          @click="currentTab = 'contact'"
-        >
-          ✉️ Contact
+          🔌 Integrations
         </button>
         <button 
           :class="['tab-btn', { active: currentTab === 'privacy' }]"
@@ -136,31 +104,13 @@ const tabTitles: Record<InfoModalTab, string> = {
 
       <!-- Modal Body (Modular Tab Views) -->
       <div class="modal-body custom-scrollbar">
-        <PricingTab 
-          v-if="currentTab === 'pricing'" 
+        <AboutTab 
+          v-if="currentTab === 'about'" 
           @open-login="emit('open-login', $event)" 
-          @switch-tab="currentTab = ($event as InfoModalTab)" 
         />
         
         <IntegrationsTab 
           v-else-if="currentTab === 'integrations'" 
-        />
-        
-        <AboutTab 
-          v-else-if="currentTab === 'about'" 
-          @open-login="emit('open-login', $event)" 
-        />
-        
-        <CareersTab 
-          v-else-if="currentTab === 'careers'" 
-        />
-        
-        <BlogTab 
-          v-else-if="currentTab === 'blog'" 
-        />
-        
-        <ContactTab 
-          v-else-if="currentTab === 'contact'" 
         />
         
         <PrivacyTab 

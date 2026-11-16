@@ -5,10 +5,11 @@ import InfoModal, { type InfoModalTab } from '../ui/InfoModal.vue'
 
 const emit = defineEmits<{
   (e: 'open-login', isLogin: boolean): void
+  (e: 'view-demo'): void
 }>()
 
 const isInfoModalOpen = ref(false)
-const infoModalTab = ref<InfoModalTab>('pricing')
+const infoModalTab = ref<InfoModalTab>('about')
 
 const openInfoModal = (tab: InfoModalTab) => {
   infoModalTab.value = tab
@@ -77,7 +78,7 @@ const scrollToTop = () => {
         <div class="nav-links">
           <a href="#features" @click.prevent="scrollToFeatures">Features</a>
           <a href="#how-it-works" @click.prevent="scrollToSection('how-it-works')">How it Works</a>
-          <a href="#pricing" @click.prevent="openInfoModal('pricing')">Pricing</a>
+          <a href="#integrations" @click.prevent="openInfoModal('integrations')">Integrations</a>
         </div>
         
         <div class="nav-auth">
@@ -107,9 +108,8 @@ const scrollToTop = () => {
         <div class="mobile-menu-links">
           <a href="#features" @click.prevent="scrollToFeatures">Features</a>
           <a href="#how-it-works" @click.prevent="scrollToSection('how-it-works')">How it Works</a>
-          <a href="#pricing" @click.prevent="openInfoModal('pricing'); closeMobileMenu()">Pricing</a>
           <a href="#integrations" @click.prevent="openInfoModal('integrations'); closeMobileMenu()">Integrations</a>
-          <a href="#contact" @click.prevent="openInfoModal('contact'); closeMobileMenu()">Contact</a>
+          <a href="#about" @click.prevent="openInfoModal('about'); closeMobileMenu()">About</a>
         </div>
         <div class="mobile-menu-divider"></div>
         <div class="mobile-menu-auth">
@@ -132,7 +132,7 @@ const scrollToTop = () => {
           </p>
           <div class="hero-actions">
             <button class="btn-primary btn-large" @click="emit('open-login', false)">Get Started Now</button>
-            <button class="btn-secondary btn-large" @click="emit('open-login', true)">View Demo</button>
+            <button class="btn-secondary btn-large" @click="emit('view-demo')">View Demo</button>
           </div>
         </div>
         
@@ -243,17 +243,12 @@ const scrollToTop = () => {
           <div class="link-group">
             <h4>Product</h4>
             <a href="#features" @click.prevent="scrollToFeatures">Features</a>
+            <a href="#how-it-works" @click.prevent="scrollToSection('how-it-works')">How it Works</a>
             <a href="#integrations" @click.prevent="openInfoModal('integrations')">Integrations</a>
-            <a href="#pricing" @click.prevent="openInfoModal('pricing')">Pricing</a>
           </div>
           <div class="link-group">
             <h4>Company</h4>
             <a href="#about" @click.prevent="openInfoModal('about')">About</a>
-            <a href="#careers" @click.prevent="openInfoModal('careers')" class="careers-link">
-              Careers <span class="footer-badge">Hiring</span>
-            </a>
-            <a href="#blog" @click.prevent="openInfoModal('blog')">Blog</a>
-            <a href="#contact" @click.prevent="openInfoModal('contact')">Contact</a>
           </div>
           <div class="link-group">
             <h4>Legal</h4>
